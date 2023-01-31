@@ -1,6 +1,5 @@
 import collections
 
-import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
 from rclpy.node import Node
@@ -29,8 +28,6 @@ class AudioToSpectrumNode(Node):
         self.spectogram_publisher_ = self.create_publisher(
             Float32MultiArray, "~/spectrogram", qos_profile_system_default
         )
-
-        plt.ion()
 
     def audio_subscriber_callback_(self, audio_msg: Int16MultiArray) -> None:
         audio = audio_msg.data
