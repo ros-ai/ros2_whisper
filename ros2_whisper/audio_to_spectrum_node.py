@@ -6,7 +6,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_system_default
 from scipy import signal
-from std_msgs.msg import Float64MultiArray, Int16MultiArray, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray, Int16MultiArray, MultiArrayDimension
 
 
 class AudioToSpectrumNode(Node):
@@ -27,7 +27,7 @@ class AudioToSpectrumNode(Node):
         )
 
         self.spectogram_publisher_ = self.create_publisher(
-            Float64MultiArray, "~/spectrogram", qos_profile_system_default
+            Float32MultiArray, "~/spectrogram", qos_profile_system_default
         )
 
         plt.ion()
@@ -42,17 +42,25 @@ class AudioToSpectrumNode(Node):
             spectrogram_msg = self.convert_to_spectrum_(audio)
             self.spectogram_publisher_.publish(spectrogram_msg)
 
-    def convert_to_spectrum_(self, audio: np.ndarray) -> Float64MultiArray:
+    def convert_to_spectrum_(self, audio: np.ndarray) -> Float32MultiArray:
         # compute spectogram with scipy
         f, t, Sxx = signal.spectrogram(
             audio, fs=44100
         )  # to be read from audio message! create message
-        spectrogram_msg = Float64MultiArray()
+        spectrogram_msg = Float32MultiArray()
         spectrogram_msg.data = Sxx.flatten().tolist()
         spectrogram_msg.layout.data_offset = 0
         spectrogram_msg.layout.dim = [
-            MultiArrayDimension(label="frequency", size=Sxx.shape[0], stride=1),
-            MultiArrayDimension(label="time", size=Sxx.shape[1], stride=1),
+            MultiArrayDimension(
+                label="frequency",
+                size=Sxx.shape[0],
+                stride=Sxx.shape[0] * Sxx.dtype.itemsize,
+            ),
+            MultiArrayDimension(
+                label="time",
+                size=Sxx.shape[1],
+                stride=Sxx.shape[1] * Sxx.dtype.itemsize,
+            ),
         ]
 
         return spectrogram_msg
