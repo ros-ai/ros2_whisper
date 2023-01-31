@@ -14,7 +14,7 @@ class WhisperInferenceNode(Node):
     def __init__(self, node_name: str) -> None:
         super().__init__(node_name)
         self.whisper_model_ = whisper.load_model("base")
-        self.whisper_options_ = whisper.DecodingOptions()
+        self.whisper_options_ = whisper.DecodingOptions(language="english")
 
         self.audio_subscriber_ = self.create_subscription(
             Int16MultiArray,
@@ -50,7 +50,8 @@ class WhisperInferenceNode(Node):
             mel = whisper.log_mel_spectrogram(audio).to(self.device_)
             result = whisper.decode(self.whisper_model_, mel, self.whisper_options_)
 
-            self.get_logger().info(result.text)
+            if "Hello Ross" in result.text:
+                self.get_logger().info("Hello Martin! How may I assist you?")
 
 
 def main(args=None):
