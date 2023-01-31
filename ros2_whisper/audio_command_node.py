@@ -18,7 +18,7 @@ class AudioCommandNode(Node):
             parameters=[
                 ("channels", 1),
                 ("frames_per_buffer", 1024),
-                ("rate", 44100),
+                ("rate", 16000),
             ],
         )
 

@@ -20,7 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "audio_command_node = ros2_whisper.audio_command_node:main",
-            "audio_to_spectrum_node = ros2_whisper.audio_to_spectrum_node:main",
+            "whisper_inference_node = ros2_whisper.whisper_inference_node:main",
         ],
     },
 )
