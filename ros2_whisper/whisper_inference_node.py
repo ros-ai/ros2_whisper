@@ -51,7 +51,7 @@ class WhisperInferenceNode(Node):
             result = whisper.decode(self.whisper_model_, mel, self.whisper_options_)
 
             if "Hello Ross" in result.text:
-                self.get_logger().info("Hello Martin! How may I assist you?")
+                self.get_logger().info("Hello there")
 
 
 def main(args=None):
