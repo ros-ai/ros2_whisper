@@ -12,7 +12,7 @@ To build, do
 ```shell
 mkdir -p ros2_whisper_ws/src && cd ros2_whisper_ws/src && \
 git clone https://github.com/mhubii/ros2_whisper.git && cd .. && \
-colcon build
+colcon build --symlink-install
 ```
 
 ## Run
