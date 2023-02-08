@@ -36,7 +36,7 @@ class WhisperInferenceNode(Node):
         )
         self.audio_buffer_ = deque(
             maxlen=int(16000.0 / 1024 * self.inference_period_)
-        )  # buffer length to record 1. seconds
+        )  # buffer length to record self.inference_period_ seconds
 
         self.whisper_timer_ = self.create_timer(
             1.0 / self.inference_period_, self.whisper_timer_callback_
