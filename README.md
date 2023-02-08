@@ -12,11 +12,12 @@ To build, do
 ```shell
 mkdir -p ros2_whisper_ws/src && cd ros2_whisper_ws/src && \
 git clone https://github.com/mhubii/ros2_whisper.git && cd .. && \
-colcon build && source install/setup.bash
+colcon build
 ```
 
 ## Run
 To run, do
 ```shell
+source install/setup.bash && \
 ros2 launch ros2_whisper ros2_whisper.launch.py
 ```
