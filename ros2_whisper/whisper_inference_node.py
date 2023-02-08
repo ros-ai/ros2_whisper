@@ -1,13 +1,12 @@
-import torch.nn.functional as F
+from collections import deque
+
 import numpy as np
+import rclpy
 import torch
 import whisper
-from collections import deque
-import rclpy
 from rclpy.node import Node
-
 from rclpy.qos import qos_profile_system_default
-from std_msgs.msg import Float32MultiArray, Int16MultiArray
+from std_msgs.msg import Int16MultiArray
 
 
 class WhisperInferenceNode(Node):
@@ -50,8 +49,7 @@ class WhisperInferenceNode(Node):
             mel = whisper.log_mel_spectrogram(audio).to(self.device_)
             result = whisper.decode(self.whisper_model_, mel, self.whisper_options_)
 
-            if "Hello Ross" in result.text:
-                self.get_logger().info("Hello there")
+            self.get_logger().info(result.text)
 
 
 def main(args=None):
