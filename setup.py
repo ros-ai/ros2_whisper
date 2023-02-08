@@ -20,7 +20,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "audio_command_node = ros2_whisper.audio_command_node:main",
+            "audio_listener_node = ros2_whisper.audio_listener_node:main",
             "whisper_inference_node = ros2_whisper.whisper_inference_node:main",
         ],
     },

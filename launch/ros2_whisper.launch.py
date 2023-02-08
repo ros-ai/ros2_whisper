@@ -7,9 +7,9 @@ from launch.event_handlers import OnProcessStart
 
 def generate_launch_description():
 
-    audio_command_node = Node(
+    audio_listener_node = Node(
         package="ros2_whisper",
-        executable="audio_command_node",
+        executable="audio_listener_node",
         output="screen",
     )
 
@@ -21,8 +21,8 @@ def generate_launch_description():
 
     whisper_inference_node_event_handler = RegisterEventHandler(
         OnProcessStart(
-            on_start=[whisper_inference_node], target_action=audio_command_node
+            on_start=[whisper_inference_node], target_action=audio_listener_node
         )
     )
 
-    return LaunchDescription([audio_command_node, whisper_inference_node_event_handler])
+    return LaunchDescription([audio_listener_node, whisper_inference_node_event_handler])

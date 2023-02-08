@@ -8,11 +8,10 @@ from rclpy.qos import qos_profile_system_default
 from std_msgs.msg import Int16MultiArray, MultiArrayDimension
 
 
-class AudioCommandNode(Node):
+class AudioListenerNode(Node):
     def __init__(self, node_name: str) -> None:
         super().__init__(node_name)
 
-        # self.channels_ =
         self.declare_parameters(
             namespace="",
             parameters=[
@@ -22,9 +21,13 @@ class AudioCommandNode(Node):
             ],
         )
 
-        self.channels_ = int(self.get_parameter("channels").value)
-        self.frames_per_buffer_ = int(self.get_parameter("frames_per_buffer").value)
-        self.rate_ = int(self.get_parameter("rate").value)
+        self.channels_ = (
+            self.get_parameter("channels").get_parameter_value().integer_value
+        )
+        self.frames_per_buffer_ = (
+            self.get_parameter("frames_per_buffer").get_parameter_value().integer_value
+        )
+        self.rate_ = self.get_parameter("rate").get_parameter_value().integer_value
 
         self.pyaudio_ = pyaudio.PyAudio()
         self.stream_ = self.pyaudio_.open(
@@ -64,9 +67,8 @@ class AudioCommandNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    audio_command_node = AudioCommandNode("audio_command_node")
-    rclpy.spin(audio_command_node)
-    audio_command_node.destroy_node()
+    audio_listener_node = AudioListenerNode("audio_listener_node")
+    rclpy.spin(audio_listener_node)
     rclpy.shutdown()
 
 

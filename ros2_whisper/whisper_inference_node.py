@@ -15,19 +15,31 @@ class WhisperInferenceNode(Node):
         self.whisper_model_ = whisper.load_model("base")
         self.whisper_options_ = whisper.DecodingOptions(language="english")
 
+        self.declare_parameters(
+            namespace="",
+            parameters=[("audio_activation_threshold", 0.3), ("inference_period", 1.0)],
+        )
+        self.audio_activation_threshold_ = (
+            self.get_parameter("audio_activation_threshold")
+            .get_parameter_value()
+            .double_value
+        )
+        self.inference_period_ = (
+            self.get_parameter("inference_period").get_parameter_value().double_value
+        )
+
         self.audio_subscriber_ = self.create_subscription(
             Int16MultiArray,
-            "/audio_command_node/audio",
+            "/audio_listener_node/audio",
             self.audio_subscriber_callback_,
             qos_profile_system_default,
         )
-        self.period_ = 1.0
         self.audio_buffer_ = deque(
-            maxlen=int(16000.0 / 1024 * self.period_)
+            maxlen=int(16000.0 / 1024 * self.inference_period_)
         )  # buffer length to record 1. seconds
 
         self.whisper_timer_ = self.create_timer(
-            1.0 / self.period_, self.whisper_timer_callback_
+            1.0 / self.inference_period_, self.whisper_timer_callback_
         )
 
         self.device_ = "cpu"
@@ -43,8 +55,10 @@ class WhisperInferenceNode(Node):
         if len(self.audio_buffer_) == self.audio_buffer_.maxlen:
             audio = (
                 np.concatenate(self.audio_buffer_) / 32768.0
-            )  # normalization in whisper
+            )  # normalization in whisper https://github.com/openai/whisper/blob/0f39c89d9212e4d0c64b915cf7ba3c1f0b59fecc/whisper/audio.py#L49
             audio = torch.from_numpy(audio).float()
+            if audio.abs().max() < self.audio_activation_threshold_:
+                return
             audio = whisper.pad_or_trim(audio)
             mel = whisper.log_mel_spectrogram(audio).to(self.device_)
             result = whisper.decode(self.whisper_model_, mel, self.whisper_options_)
