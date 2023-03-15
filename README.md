@@ -21,3 +21,8 @@ To run, do
 source install/setup.bash && \
 ros2 launch ros2_whisper ros2_whisper.launch.py
 ```
+
+To print the inferenced text, do
+```shell
+ros2 topic echo /whisper_inference_node/text
+```

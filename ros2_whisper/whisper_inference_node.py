@@ -6,7 +6,7 @@ import torch
 import whisper
 from rclpy.node import Node
 from rclpy.qos import qos_profile_system_default
-from std_msgs.msg import Int16MultiArray
+from std_msgs.msg import Int16MultiArray, String
 
 
 class WhisperInferenceNode(Node):
@@ -42,6 +42,10 @@ class WhisperInferenceNode(Node):
             1.0 / self.inference_period_, self.whisper_timer_callback_
         )
 
+        self.text_publisher_ = self.create_publisher(
+            String, "~/text", qos_profile_system_default
+        )
+
         self.device_ = "cpu"
         if torch.cuda.is_available():
             self.get_logger().info("CUDA is available. Using GPU.")
@@ -63,7 +67,8 @@ class WhisperInferenceNode(Node):
             mel = whisper.log_mel_spectrogram(audio).to(self.device_)
             result = whisper.decode(self.whisper_model_, mel, self.whisper_options_)
 
-            self.get_logger().info(result.text)
+            text_msg = String(data=result.text)
+            self.text_publisher_.publish(text_msg)
 
 
 def main(args=None):
