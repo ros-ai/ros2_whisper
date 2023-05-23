@@ -12,8 +12,13 @@ from std_msgs.msg import Int16MultiArray, String
 class WhisperInferenceNode(Node):
     def __init__(self, node_name: str) -> None:
         super().__init__(node_name)
-        self.whisper_model_ = whisper.load_model("base")
-        self.whisper_options_ = whisper.DecodingOptions(language="english")
+        self.declare_parameter("model", "base")
+        self.declare_parameter("language", "english")
+        model = self.get_parameter("model").value
+        language = self.get_parameter("language").value
+
+        self.whisper_model_ = whisper.load_model(model)
+        self.whisper_options_ = whisper.DecodingOptions(language=language)
 
         self.declare_parameters(
             namespace="",

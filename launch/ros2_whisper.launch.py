@@ -17,6 +17,7 @@ def generate_launch_description():
         package="ros2_whisper",
         executable="whisper_inference_node",
         output="screen",
+        parameters=[{"model": "base", "lanaguage": "english"}],
     )
 
     whisper_inference_node_event_handler = RegisterEventHandler(
