@@ -1,5 +1,5 @@
-# ROS2 Whisper
-Repository showcases inference of the [OpenAI Whisper](https://github.com/openai/whisper) within a ROS2 node.
+# ROS 2 Whisper
+Repository showcases inference of the [OpenAI Whisper](https://github.com/openai/whisper) within a ROS 2 node.
 
 ## Preparation
 ### Dependencies
