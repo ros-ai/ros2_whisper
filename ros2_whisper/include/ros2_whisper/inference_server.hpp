@@ -16,7 +16,7 @@ public:
   InferenceServer(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
-  void on_inference(const std_srvs::srv::Trigger::Response::SharedPtr requset,
+  void on_inference(const std_srvs::srv::Trigger::Request::SharedPtr requset,
                     std_srvs::srv::Trigger::Response::SharedPtr response);
 
   rclcpp::Node::SharedPtr node_ptr_;
