@@ -15,6 +15,7 @@ find_package(whisper_cpp_vendor REQUIRED)
 add_library(ros2_whisper SHARED
   src/audio_buffer.cpp
   src/inference_server.cpp
+  src/whisper.cpp
 )
 
 target_include_directories(ros2_whisper
@@ -27,6 +28,11 @@ ament_target_dependencies(ros2_whisper
   rclcpp
   std_msgs
   std_srvs
+  whisper_cpp_vendor
+)
+
+target_link_libraries(ros2_whisper
+  whisper_cpp_vendor::whisper
 )
 
 ament_export_targets(export_ros2_whisper HAS_LIBRARY_TARGET)
@@ -59,7 +65,6 @@ add_executable(test_node src/test_node.cpp)
 ament_target_dependencies(test_node rclcpp std_msgs whisper_cpp_vendor)
 target_link_libraries(test_node
   ros2_whisper
-  whisper_cpp_vendor::whisper
 )
 
 install(

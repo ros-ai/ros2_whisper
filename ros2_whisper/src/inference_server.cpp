@@ -13,7 +13,7 @@ InferenceServer::InferenceServer(const rclcpp::Node::SharedPtr node_ptr)
       });
 
   clear_audio_buffer_service_ = node_ptr_->create_service<std_srvs::srv::Trigger>(
-      "clear_audio_buffer", [this](const std_srvs::srv::Trigger::Request::SharedPtr request,
+      "clear_audio_buffer", [this](const std_srvs::srv::Trigger::Request::SharedPtr /*request*/,
                                    std_srvs::srv::Trigger::Response::SharedPtr response) {
         audio_buffer_.clear_audio_data();
         response->message = "Cleared audio buffer.";
@@ -37,12 +37,13 @@ InferenceServer::InferenceServer(const rclcpp::Node::SharedPtr node_ptr)
 
 void InferenceServer::on_inference(
     const std_srvs::srv::Trigger::Request::SharedPtr
-        requset, // TODO: to be replaced by custom service message, which includes inferenced text!
-    std_srvs::srv::Trigger::Response::SharedPtr response) {
-  if (audio_buffer_.get_audio_data_size() == 0) {
-    response->message = "Audio buffer is empty.";
-    response->success = false;
-  }
+    /*requset*/, // TODO: to be replaced by custom service message, which includes inferenced text!
+    std_srvs::srv::Trigger::Response::SharedPtr /*response*/) {
+  whisper_.forward();
+  // if (audio_buffer_.get_audio_data_size() == 0) {
+  //   response->message = "Audio buffer is empty.";
+  //   response->success = false;
+  // }
 }
 
-} // namespace ros2_whisper
+} // end of namespace ros2_whisper

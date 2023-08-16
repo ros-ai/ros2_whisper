@@ -9,6 +9,7 @@
 #include "std_srvs/srv/trigger.hpp"
 
 #include "ros2_whisper/audio_buffer.hpp"
+#include "ros2_whisper/whisper.hpp"
 
 namespace ros2_whisper {
 class InferenceServer {
@@ -30,6 +31,7 @@ protected:
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_subscription_;
 
   AudioBuffer audio_buffer_;
+  Whisper whisper_;
 };
 } // end of namespace ros2_whisper
 
