@@ -3,16 +3,20 @@
 <package format="3">
   <name>ros2_whisper</name>
   <version>1.0.0</version>
-  <description>Whisper package for ros2.</description>
+  <description>ROS 2 whisper.cpp inference server.</description>
   <maintainer email="m.huber_1994@hotmail.de">mhubii</maintainer>
   <license>MIT</license>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>whisper_cpp_vendor</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <build_type>ament_python</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 </package>
