@@ -6,7 +6,7 @@ def generate_launch_description() -> LaunchDescription:
     ld = LaunchDescription()
     ld.add_action(
         Node(
-            package="audio_common_replica",
+            package="audio_listener",
             executable="audio_listener_node",
             output="screen",
         )

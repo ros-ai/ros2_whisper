@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = "audio_common_replica"
+package_name = "audio_listener"
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "audio_listener_node = audio_common_replica.audio_listener_node:main",
+            "audio_listener_node = audio_listener.audio_listener_node:main",
         ],
     },
 )
