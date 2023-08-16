@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "whisper.h"
 
@@ -12,7 +13,7 @@ public:
   Whisper();
   ~Whisper();
 
-  std::string forward();
+  std::vector<std::string> forward(const std::vector<float> &input);
 
 protected:
   whisper_context *wctx_;

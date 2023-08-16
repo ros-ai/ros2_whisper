@@ -37,13 +37,16 @@ InferenceServer::InferenceServer(const rclcpp::Node::SharedPtr node_ptr)
 
 void InferenceServer::on_inference(
     const std_srvs::srv::Trigger::Request::SharedPtr
-    /*requset*/, // TODO: to be replaced by custom service message, which includes inferenced text!
-    std_srvs::srv::Trigger::Response::SharedPtr /*response*/) {
-  whisper_.forward();
-  // if (audio_buffer_.get_audio_data_size() == 0) {
-  //   response->message = "Audio buffer is empty.";
-  //   response->success = false;
-  // }
+        /*requset*/, // TODO: to be replaced by custom service message, which includes inferenced text!
+    std_srvs::srv::Trigger::Response::SharedPtr response) {
+  if (audio_buffer_.get_audio_data_size() == 0) {
+    response->message = "Audio buffer is empty.";
+    response->success = false;
+  }
+  auto segments = whisper_.forward(audio_buffer_.get_normalized_audio_data());
+  for (const auto &segment : segments) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Inference result: %s", segment.c_str());
+  }
 }
 
 } // end of namespace ros2_whisper
