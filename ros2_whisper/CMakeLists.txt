@@ -15,7 +15,14 @@ find_package(whisper_cpp_vendor REQUIRED)
 add_library(ros2_whisper SHARED
   src/audio_buffer.cpp
   src/inference_server.cpp
+  src/model_manager.cpp
   src/whisper.cpp
+)
+
+set_target_properties(ros2_whisper PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  CXX_EXTENSIONS NO
 )
 
 target_include_directories(ros2_whisper
