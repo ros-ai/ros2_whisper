@@ -22,13 +22,10 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         WhisperMixin.composable_node_container_whisper(
             composable_node_descriptions=[
-                AudioBufferMixin.composable_node_audio_buffer(
-                    remappings=[("/audio_buffer/audio", "/audio_listener/audio")],
+                AudioBufferMixin.composable_node_list(
+                    remappings=[("/listen/audio", "/audio_listener/audio")],
                 ),
                 WhisperMixin.composable_node_whisper(
-                    remappings=[
-                        ("/whisper/provide", "/audio_buffer/provide"),
-                    ],
                     parameters=[
                         WhisperMixin.param_model_name(),
                         WhisperMixin.param_n_threads(),

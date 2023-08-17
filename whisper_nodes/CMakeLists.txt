@@ -22,7 +22,7 @@ find_package(whisper_wrapper REQUIRED)
 
 # whisper nodes
 add_library(whisper_nodes SHARED
-  src/audio_buffer_node.cpp
+  src/listen_node.cpp
   src/whisper_node.cpp
 )
 
@@ -63,22 +63,22 @@ install(
 )
 
 # audio buffer component
-add_library(audio_buffer_component SHARED
-  src/audio_buffer_component.cpp
+add_library(listen_component SHARED
+  src/listen_component.cpp
 )
 
-ament_target_dependencies(audio_buffer_component
+ament_target_dependencies(listen_component
   rclcpp
   rclcpp_components
 )
 
-target_link_libraries(audio_buffer_component
+target_link_libraries(listen_component
   whisper_nodes
 )
 
-rclcpp_components_register_node(audio_buffer_component
-  PLUGIN whisper::AudioBufferComponent
-  EXECUTABLE audio_buffer
+rclcpp_components_register_node(listen_component
+  PLUGIN whisper::ListenComponent
+  EXECUTABLE listen
 )
 
 # whisper component
@@ -102,7 +102,7 @@ rclcpp_components_register_node(whisper_component
 
 # install components
 install(
-  TARGETS audio_buffer_component whisper_component
+  TARGETS listen_component whisper_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )

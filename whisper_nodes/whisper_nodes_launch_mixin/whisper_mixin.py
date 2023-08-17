@@ -8,11 +8,11 @@ from launch_ros.descriptions import ComposableNode
 
 class AudioBufferMixin:
     @staticmethod
-    def composable_node_audio_buffer(**kwargs) -> ComposableNode:
+    def composable_node_listen(**kwargs) -> ComposableNode:
         return ComposableNode(
             package="whisper_nodes",
-            plugin="whisper::AudioBufferComponent",
-            name="audio_buffer",
+            plugin="whisper::ListenComponent",
+            name="listen",
             extra_arguments=[{"use_intra_process_comms": True}],
             **kwargs
         )

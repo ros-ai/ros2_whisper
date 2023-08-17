@@ -11,7 +11,7 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "action/RecordAudio.action"
+  "action/Listen.action"
   "srv/Inference.srv"
   DEPENDENCIES
   std_msgs
