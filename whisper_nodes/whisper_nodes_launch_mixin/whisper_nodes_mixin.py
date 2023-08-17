@@ -6,19 +6,7 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 
-class ListenMixin:
-    @staticmethod
-    def composable_node_listen(**kwargs) -> ComposableNode:
-        return ComposableNode(
-            package="whisper_nodes",
-            plugin="whisper::ListenComponent",
-            name="listen",
-            extra_arguments=[{"use_intra_process_comms": True}],
-            **kwargs
-        )
-
-
-class WhisperMixin:
+class InferenceMixin:
     @staticmethod
     def arg_model_name() -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
@@ -69,25 +57,39 @@ class WhisperMixin:
         return {"language": LaunchConfiguration("language", default="en")}
 
     @staticmethod
-    def composable_node_whisper(**kwargs) -> ComposableNode:
+    def composable_node_inference(**kwargs) -> ComposableNode:
         return ComposableNode(
             package="whisper_nodes",
             plugin="whisper::InferenceComponent",
-            name="whisper",
+            name="inference",
             extra_arguments=[{"use_intra_process_comms": True}],
             **kwargs
         )
 
+
+class ListenMixin:
     @staticmethod
-    def composable_node_container_whisper(
+    def composable_node_listen(**kwargs) -> ComposableNode:
+        return ComposableNode(
+            package="whisper_nodes",
+            plugin="whisper::ListenComponent",
+            name="listen",
+            extra_arguments=[{"use_intra_process_comms": True}],
+            **kwargs
+        )
+
+
+class WhisperNodesMixin(InferenceMixin, ListenMixin):
+    @staticmethod
+    def composable_node_container(
         composable_node_descriptions: List[ComposableNode],
     ) -> ComposableNodeContainer:
-        whisper_container = ComposableNodeContainer(
-            name="whisper_container",
+        whisper_nodes_container = ComposableNodeContainer(
+            name="whisper_nodes_container",
             package="rclcpp_components",
             namespace="",
             executable="component_container",
             output="screen",
             composable_node_descriptions=composable_node_descriptions,
         )
-        return whisper_container
+        return whisper_nodes_container

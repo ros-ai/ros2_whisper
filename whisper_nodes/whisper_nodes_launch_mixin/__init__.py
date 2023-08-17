@@ -1,1 +1,1 @@
-from .whisper_mixin import ListenMixin, WhisperMixin
+from .whisper_nodes_mixin import InferenceMixin, ListenMixin, WhisperNodesMixin
