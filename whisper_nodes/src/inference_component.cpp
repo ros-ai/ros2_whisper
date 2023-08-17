@@ -1,12 +1,12 @@
 #include "rclcpp/rclcpp.hpp"
 
-#include "whisper_nodes/whisper_node.hpp"
+#include "whisper_nodes/inference_node.hpp"
 
 namespace whisper {
-class WhisperComponent {
+class InferenceComponent {
 public:
-  WhisperComponent(const rclcpp::NodeOptions &options)
-      : node_ptr_(rclcpp::Node::make_shared("whisper", options)), whisper_node_(node_ptr_){};
+  InferenceComponent(const rclcpp::NodeOptions &options)
+      : node_ptr_(rclcpp::Node::make_shared("inference", options)), whisper_node_(node_ptr_){};
 
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface() const {
     return node_ptr_->get_node_base_interface();
@@ -14,8 +14,8 @@ public:
 
 protected:
   rclcpp::Node::SharedPtr node_ptr_;
-  whisper::WhisperNode whisper_node_;
+  whisper::InferenceNode whisper_node_;
 };
 } // end of namespace whisper
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(whisper::WhisperComponent)
+RCLCPP_COMPONENTS_REGISTER_NODE(whisper::InferenceComponent)

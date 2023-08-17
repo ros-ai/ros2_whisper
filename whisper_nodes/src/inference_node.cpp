@@ -1,13 +1,13 @@
-#include "whisper_nodes/whisper_node.hpp"
+#include "whisper_nodes/inference_node.hpp"
 
 namespace whisper {
-WhisperNode::WhisperNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(node_ptr) {
+InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(node_ptr) {
   initialize_parameters_();
 
   // create inference service
   inference_service_ = node_ptr_->create_service<whisper_msgs::srv::Inference>(
       "~/inference",
-      std::bind(&WhisperNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
+      std::bind(&InferenceNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
 
   // initialize model
   std::string model_name = node_ptr_->get_parameter("model_name").as_string();
@@ -29,7 +29,7 @@ WhisperNode::WhisperNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(nod
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s initialized.", model_name.c_str());
 }
 
-void WhisperNode::initialize_parameters_() {
+void InferenceNode::initialize_parameters_() {
   if (!node_ptr_->has_parameter("model_name")) {
     node_ptr_->declare_parameter("model_name", rclcpp::ParameterValue("base.en"));
   }
@@ -41,7 +41,7 @@ void WhisperNode::initialize_parameters_() {
   }
 }
 
-void WhisperNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
+void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                                 whisper_msgs::srv::Inference::Response::SharedPtr response) {
   if (request->audio.data.size() <= 0) {
     response->info = "No audio data provided.";

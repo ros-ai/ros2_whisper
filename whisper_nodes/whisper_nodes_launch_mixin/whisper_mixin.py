@@ -72,7 +72,7 @@ class WhisperMixin:
     def composable_node_whisper(**kwargs) -> ComposableNode:
         return ComposableNode(
             package="whisper_nodes",
-            plugin="whisper::WhisperComponent",
+            plugin="whisper::InferenceComponent",
             name="whisper",
             extra_arguments=[{"use_intra_process_comms": True}],
             **kwargs

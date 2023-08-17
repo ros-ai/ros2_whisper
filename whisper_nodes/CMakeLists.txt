@@ -23,7 +23,7 @@ find_package(whisper_wrapper REQUIRED)
 # whisper nodes
 add_library(whisper_nodes SHARED
   src/listen_node.cpp
-  src/whisper_node.cpp
+  src/inference_node.cpp
 )
 
 set(WHISPER_NODES_DEPENDENCIES
@@ -82,27 +82,27 @@ rclcpp_components_register_node(listen_component
 )
 
 # whisper component
-add_library(whisper_component SHARED
-  src/whisper_component.cpp
+add_library(inference_component SHARED
+  src/inference_component.cpp
 )
 
-ament_target_dependencies(whisper_component
+ament_target_dependencies(inference_component
   rclcpp
   rclcpp_components
 )
 
-target_link_libraries(whisper_component
+target_link_libraries(inference_component
   whisper_nodes
 )
 
-rclcpp_components_register_node(whisper_component
-  PLUGIN whisper::WhisperComponent
+rclcpp_components_register_node(inference_component
+  PLUGIN whisper::InferenceComponent
   EXECUTABLE whisper
 )
 
 # install components
 install(
-  TARGETS listen_component whisper_component
+  TARGETS listen_component inference_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )

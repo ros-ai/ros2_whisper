@@ -1,5 +1,5 @@
-#ifndef WHISPER_NODES__WHISPER_NODE_HPP_
-#define WHISPER_NODES__WHISPER_NODE_HPP_
+#ifndef WHISPER_NODES__INFERENCE_NODE_HPP_
+#define WHISPER_NODES__INFERENCE_NODE_HPP_
 
 #include <chrono>
 #include <memory>
@@ -13,9 +13,9 @@
 #include "whisper_wrapper/whisper.hpp"
 
 namespace whisper {
-class WhisperNode {
+class InferenceNode {
 public:
-  WhisperNode(const rclcpp::Node::SharedPtr node_ptr);
+  InferenceNode(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
   void initialize_parameters_();
@@ -30,4 +30,4 @@ protected:
   Whisper whisper_;
 };
 } // end of namespace whisper
-#endif // WHISPER_NODES__WHISPER_NODE_HPP_
+#endif // WHISPER_NODES__INFERENCE_NODE_HPP_
