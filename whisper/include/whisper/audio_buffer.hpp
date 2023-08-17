@@ -1,5 +1,5 @@
-#ifndef ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
-#define ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
+#ifndef WHISPER__AUDIO_BUFFER_HPP_
+#define WHISPER__AUDIO_BUFFER_HPP_
 
 #include <algorithm>
 #include <cstdint>
@@ -21,4 +21,4 @@ protected:
 
 } // end of namespace whisper
 
-#endif // ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
+#endif // WHISPER__AUDIO_BUFFER_HPP_
