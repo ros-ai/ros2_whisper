@@ -100,7 +100,7 @@ rclcpp_components_register_node(whisper_component
 
 # install components
 install(
-  TARGETS audio_buffer_component# whisper_component
+  TARGETS audio_buffer_component whisper_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
