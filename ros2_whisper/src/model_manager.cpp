@@ -40,8 +40,10 @@ std::string ModelManager::get_model_path(const std::string &model_name) {
 void ModelManager::mkdir(const std::string &path) {
   using namespace std;
   if (filesystem::exists(path)) {
-    cout << "already exists: " << path << endl;
+    cout << "Path already exists: " << path << endl;
+    return;
   }
+  cout << "Creating path: " << path << endl;
   filesystem::create_directories(path);
 }
 
