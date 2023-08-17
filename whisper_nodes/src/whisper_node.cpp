@@ -43,12 +43,12 @@ void WhisperNode::initialize_parameters_() {
 
 void WhisperNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                                 whisper_msgs::srv::Inference::Response::SharedPtr response) {
-  if (request->audio.layout.dim[0] <= 0) {
+  if (request->audio.data.size() <= 0) {
     response->info = "No audio data provided.";
     response->success = false;
     return;
   }
-  response->segments = whisper_.forward(request->audio.data.data(), request->n_processors);
+  response->segments = whisper_.forward(request->audio.data, request->n_processors);
   response->info = "Inference successful.";
   response->success = true;
 }
