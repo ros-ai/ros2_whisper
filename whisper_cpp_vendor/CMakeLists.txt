@@ -13,7 +13,6 @@ set(WHISPER_VERSION_MAJOR 1 CACHE STRING "Major whisper.cpp version.")
 set(WHISPER_VERSION_MINOR 2 CACHE STRING "Minor whisper.cpp version.")
 set(WHISPER_VERSION_PATCH 1 CACHE STRING "Patch whisper.cpp version.")
 
-
 FetchContent_Declare(
   whisper
   GIT_REPOSITORY https://github.com/ggerganov/whisper.cpp.git
@@ -22,7 +21,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(whisper)
 
-# note that target properties need change as whisper.cpp CMake buggy
+# note that target properties need change as whisper.cpp CMake is buggy
 set_target_properties(
   whisper PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES
