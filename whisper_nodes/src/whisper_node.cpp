@@ -9,28 +9,6 @@ WhisperNode::WhisperNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(nod
       "~/inference",
       std::bind(&WhisperNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
 
-  // create audio provide client
-  provide_client_ = node_ptr_->create_client<whisper_msgs::srv::ProvideAudio>("~/provide");
-  int max_attempts = 5;
-  int attempts = 0;
-  while (!provide_client_->wait_for_service(std::chrono::seconds(1))) {
-    if (!rclcpp::ok()) {
-      RCLCPP_ERROR(node_ptr_->get_logger(), "Interrupted while waiting for the service. Exiting.");
-      throw std::runtime_error("Interrupted while waiting for the service. Exiting.");
-    }
-    RCLCPP_INFO(node_ptr_->get_logger(), "Waiting for the service %s to become available %d/%d...",
-                provide_client_->get_service_name(), attempts + 1, max_attempts);
-    if (++attempts == max_attempts) {
-      std::string err_msg = "Service " + std::string(provide_client_->get_service_name()) +
-                            " is not available after " + std::to_string(max_attempts) +
-                            " attempts.";
-      RCLCPP_ERROR(node_ptr_->get_logger(), err_msg.c_str());
-      throw std::runtime_error(err_msg);
-    }
-  }
-  RCLCPP_INFO(node_ptr_->get_logger(), "Service %s is now available.",
-              provide_client_->get_service_name());
-
   // initialize model
   std::string model_name = node_ptr_->get_parameter("model_name").as_string();
   RCLCPP_INFO(node_ptr_->get_logger(), "Checking if model %s is available...", model_name.c_str());
@@ -65,9 +43,6 @@ void WhisperNode::initialize_parameters_() {
 
 void WhisperNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                                 whisper_msgs::srv::Inference::Response::SharedPtr response) {
-  // call provide client
-  auto provide_request = std::make_shared<whisper_msgs::srv::ProvideAudio::Request>();
-
   // retrieved audio
   // running inference
   // done

@@ -9,7 +9,6 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "whisper_msgs/srv/inference.hpp"
-#include "whisper_msgs/srv/provide_audio.hpp"
 #include "whisper_wrapper/model_manager.hpp"
 #include "whisper_wrapper/whisper.hpp"
 
@@ -25,8 +24,7 @@ protected:
 
   rclcpp::Node::SharedPtr node_ptr_;
 
-  rclcpp::Service<whisper_msgs::srv::Inference>::SharedPtr inference_service_; // action server!
-  rclcpp::Client<whisper_msgs::srv::ProvideAudio>::SharedPtr provide_client_;
+  rclcpp::Service<whisper_msgs::srv::Inference>::SharedPtr inference_service_;
 
   ModelManager model_manager_;
   Whisper whisper_;

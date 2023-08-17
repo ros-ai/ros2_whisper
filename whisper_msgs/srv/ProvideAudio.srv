@@ -1,4 +1,4 @@
 ---
-string message
+string info
 bool success
 std_msgs/Float32MultiArray audio

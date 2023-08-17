@@ -28,12 +28,12 @@ AudioBufferNode::AudioBufferNode(const rclcpp::Node::SharedPtr node_ptr)
                           whisper_msgs::srv::ProvideAudio::Response::SharedPtr response) {
         if (audio_buffer_.get_audio_data_size() == 0) {
           response->success = false;
-          response->message = "No audio data available.";
-          RCLCPP_WARN(node_ptr_->get_logger(), response->message.c_str());
+          response->info = "No audio data available.";
+          RCLCPP_WARN(node_ptr_->get_logger(), response->info.c_str());
           return;
         }
         response->success = true;
-        response->message = "Audio data provided.";
+        response->info = "Audio data provided.";
         std_msgs::msg::MultiArrayDimension dim;
         dim.label = "audio";
         dim.size = audio_buffer_.get_audio_data_size();

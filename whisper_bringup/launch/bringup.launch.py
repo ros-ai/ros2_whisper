@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from whisper_launch_mixin import AudioBufferMixin, WhisperMixin
+from whisper_nodes_launch_mixin import AudioBufferMixin, WhisperMixin
 
 
 def generate_launch_description() -> LaunchDescription:
