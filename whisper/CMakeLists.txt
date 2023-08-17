@@ -11,74 +11,49 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_components REQUIRED)
-find_package(whisper_msgs REQUIRED)
-find_package(whisper_wrapper REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
+find_package(whisper_cpp_vendor REQUIRED)
 
-# audio buffer component
-add_library(audio_buffer_component SHARED
-  src/audio_buffer_component.cpp
+add_library(${PROJECT_NAME} SHARED
+  src/audio_buffer.cpp
+  src/model_manager.cpp
+  src/whisper.cpp
 )
 
-ament_target_dependencies(audio_buffer_component
-  rclcpp
-  rclcpp_components
-  whisper_msgs
-  whisper_wrapper
-  std_msgs
-  std_srvs
+set_target_properties(${PROJECT_NAME} PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  CXX_EXTENSIONS NO
 )
 
-target_include_directories(audio_buffer_component
-  PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
 )
 
-rclcpp_components_register_node(audio_buffer_component
-  PLUGIN whisper::AudioBufferComponent
-  EXECUTABLE audio_buffer
+ament_target_dependencies(${PROJECT_NAME}
+  whisper_cpp_vendor  
 )
 
-# whisper component
-add_library(whisper_component SHARED
-  src/whisper_component.cpp
+target_link_libraries(${PROJECT_NAME}
+  whisper_cpp_vendor::whisper
 )
 
-ament_target_dependencies(whisper_component
-  rclcpp
-  rclcpp_components
-  whisper_msgs
-  whisper_wrapper
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+  whisper_cpp_vendor
 )
 
-target_include_directories(whisper_component
-  PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-)
-
-rclcpp_components_register_node(whisper_component
-  PLUGIN whisper::WhisperComponent
-  EXECUTABLE whisper
-)
-
-# install components
 install(
-  TARGETS audio_buffer_component whisper_component
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS ${PROJECT_NAME}
+  EXPORT export_${PROJECT_NAME}
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION lib/${PROJECT_NAME}
-)
-
-# install launch mixins
-ament_python_install_package(${PROJECT_NAME}_launch_mixin)
-
-# install configurations
-install(
-  DIRECTORY config
-  DESTINATION share/${PROJECT_NAME}
+  INCLUDES DESTINATION include
 )
 
 ament_package()
