@@ -13,6 +13,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
@@ -25,12 +26,17 @@ add_library(whisper_nodes SHARED
   src/whisper_node.cpp
 )
 
-ament_target_dependencies(whisper_nodes
+set(WHISPER_NODES_DEPENDENCIES
   rclcpp
+  rclcpp_action
   std_msgs
   std_srvs
   whisper_msgs
   whisper_wrapper
+)
+
+ament_target_dependencies(whisper_nodes
+  ${WHISPER_NODES_DEPENDENCIES}
 )
 
 target_include_directories(whisper_nodes
@@ -41,11 +47,7 @@ target_include_directories(whisper_nodes
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(
-  rclcpp
-  std_msgs
-  std_srvs
-  whisper_msgs
-  whisper_wrapper
+  ${WHISPER_NODES_DEPENDENCIES}
 )
 
 install(

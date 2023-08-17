@@ -1,4 +1,6 @@
 ---
+int32 size
+---
 string info
 bool success
 std_msgs/Float32MultiArray audio
