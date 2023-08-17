@@ -7,7 +7,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         Node(
             package="audio_listener",
-            executable="audio_listener_node",
+            executable="audio_listener",
             output="screen",
         )
     )

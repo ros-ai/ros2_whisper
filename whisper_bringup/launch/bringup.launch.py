@@ -10,7 +10,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         Node(
             package="audio_listener",
-            executable="audio_listener_node",
+            executable="audio_listener",
             output="screen",
         )
     )
@@ -23,7 +23,7 @@ def generate_launch_description() -> LaunchDescription:
         WhisperMixin.composable_node_container_whisper(
             composable_node_descriptions=[
                 AudioBufferMixin.composable_node_audio_buffer(
-                    remappings=[("/audio_buffer/audio", "/audio_listener_node/audio")],
+                    remappings=[("/audio_buffer/audio", "/audio_listener/audio")],
                 ),
                 WhisperMixin.composable_node_whisper(
                     remappings=[

@@ -67,8 +67,8 @@ class AudioListenerNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    audio_listener_node = AudioListenerNode("audio_listener_node")
-    rclpy.spin(audio_listener_node)
+    audio_listener = AudioListenerNode("audio_listener")
+    rclpy.spin(audio_listener)
     rclpy.shutdown()
 
 

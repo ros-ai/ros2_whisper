@@ -20,7 +20,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "audio_listener_node = audio_listener.audio_listener_node:main",
+            "audio_listener = audio_listener.audio_listener:main",
         ],
     },
 )
