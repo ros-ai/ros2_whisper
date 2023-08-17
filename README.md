@@ -1,28 +1,15 @@
 # ROS 2 Whisper
-Repository showcases inference of the [OpenAI Whisper](https://github.com/openai/whisper) within a ROS 2 node.
+ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
-## Preparation
-### Dependencies
-This repository requires `pyaudio` and `whisper`. Install via respective install instructions
-- `pyaudio` [install instructions](https://pypi.org/project/PyAudio/)
-- `whisper` [install instructions](https://github.com/openai/whisper#setup)
-### Build
+## Dependencies
+This repository requires `pyaudio`. Install via [install instructions](https://pypi.org/project/PyAudio/).
+
+## Build
 To build, do
-
 ```shell
 mkdir -p whisper_ws/src && cd whisper_ws/src && \
-git clone https://github.com/mhubii/whisper.git && cd .. && \
+git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
 colcon build --symlink-install
 ```
 
 ## Run
-To run, do
-```shell
-source install/setup.bash && \
-ros2 launch whisper whisper.launch.py
-```
-
-To print the inferenced text, do
-```shell
-ros2 topic echo /whisper_inference_node/text
-```
