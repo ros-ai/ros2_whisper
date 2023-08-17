@@ -1,19 +1,21 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ros2_whisper</name>
+  <name>whisper</name>
   <version>1.0.0</version>
   <description>ROS 2 whisper.cpp inference server.</description>
   <maintainer email="m.huber_1994@hotmail.de">mhubii</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>ros2_whisper_msgs</depend>
+  <depend>rclcpp_components</depend>
+  <depend>whisper_msgs</depend>
+  <depend>whisper_wrapper</depend>
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
-  <depend>whisper_cpp_vendor</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

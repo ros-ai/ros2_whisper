@@ -1,5 +1,5 @@
-#ifndef ROS2_WHISPER__MODEL_MANAGER_HPP_
-#define ROS2_WHISPER__MODEL_MANAGER_HPP_
+#ifndef ROS2_WHISPER_WRAPPER__MODEL_MANAGER_HPP_
+#define ROS2_WHISPER_WRAPPER__MODEL_MANAGER_HPP_
 
 #include <cstdlib>
 #include <filesystem>
@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace ros2_whisper {
+namespace whisper {
 
 class ModelManager {
 public:
@@ -16,16 +16,18 @@ public:
                const std::string &cache_path = std::string(std::getenv("HOME")) +
                                                "/.cache/whisper.cpp");
   void mkdir(const std::string &path);
-  bool is_available(const std::string &model_name = "ggml-base.en.bin");
-  void make_available(const std::string &model_name = "ggml-base.en.bin");
-  std::string get_model_path(const std::string &model_name = "ggml-base.en.bin");
+  bool is_available(const std::string &model_name = "base.en");
+  int make_available(const std::string &model_name = "base.en");
+  std::string get_model_path(const std::string &model_name = "base.en");
 
 protected:
+  std::string model_name_to_file_name_(const std::string &model_name);
+
   std::string src_;
   std::string pfx_;
   std::filesystem::path cache_path_;
 };
 
-} // end of namespace ros2_whisper
+} // end of namespace whisper
 
-#endif // ROS2_WHISPER__MODEL_MANAGER_HPP_
+#endif // ROS2_WHISPER_WRAPPER__MODEL_MANAGER_HPP_

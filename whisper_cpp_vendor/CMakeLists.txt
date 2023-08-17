@@ -22,6 +22,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(whisper)
 
+# note that target properties need change as whisper.cpp CMake buggy
 set_target_properties(
   whisper PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES

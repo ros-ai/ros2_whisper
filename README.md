@@ -10,8 +10,8 @@ This repository requires `pyaudio` and `whisper`. Install via respective install
 To build, do
 
 ```shell
-mkdir -p ros2_whisper_ws/src && cd ros2_whisper_ws/src && \
-git clone https://github.com/mhubii/ros2_whisper.git && cd .. && \
+mkdir -p whisper_ws/src && cd whisper_ws/src && \
+git clone https://github.com/mhubii/whisper.git && cd .. && \
 colcon build --symlink-install
 ```
 
@@ -19,7 +19,7 @@ colcon build --symlink-install
 To run, do
 ```shell
 source install/setup.bash && \
-ros2 launch ros2_whisper ros2_whisper.launch.py
+ros2 launch whisper whisper.launch.py
 ```
 
 To print the inferenced text, do

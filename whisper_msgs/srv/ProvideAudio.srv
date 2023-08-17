@@ -1,0 +1,4 @@
+---
+string message
+bool success
+std_msgs/Float32MultiArray audio

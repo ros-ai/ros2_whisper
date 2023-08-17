@@ -1,11 +1,11 @@
-#ifndef ROS2_WHISPER__AUDIO_BUFFER_HPP_
-#define ROS2_WHISPER__AUDIO_BUFFER_HPP_
+#ifndef ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
+#define ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
 
 #include <algorithm>
 #include <cstdint>
 #include <vector>
 
-namespace ros2_whisper {
+namespace whisper {
 class AudioBuffer {
 public:
   AudioBuffer();
@@ -19,6 +19,6 @@ protected:
   std::vector<std::int16_t> audio_data_;
 };
 
-} // end of namespace ros2_whisper
+} // end of namespace whisper
 
-#endif // ROS2_WHISPER__AUDIO_BUFFER_HPP_
+#endif // ROS2_WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
