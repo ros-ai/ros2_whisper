@@ -1,5 +1,5 @@
-#ifndef ROS2_WHISPER__AUDIO_BUFFER_COMPONENT_HPP_
-#define ROS2_WHISPER__AUDIO_BUFFER_COMPONENT_HPP_
+#ifndef WHISPER_NODES__AUDIO_BUFFER_NODE_HPP_
+#define WHISPER_NODES__AUDIO_BUFFER_NODE_HPP_
 
 #include <atomic>
 
@@ -10,14 +10,16 @@
 #include "std_srvs/srv/trigger.hpp"
 
 #include "whisper_msgs/srv/provide_audio.hpp"
-#include "whisper/audio_buffer.hpp"
+#include "whisper_wrapper/audio_buffer.hpp"
 
 namespace whisper {
-class AudioBufferComponent : public rclcpp::Node {
+class AudioBufferNode {
 public:
-  AudioBufferComponent(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+  AudioBufferNode(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
+  rclcpp::Node::SharedPtr node_ptr_;
+
   std::atomic_bool record_;
 
   rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_service_;
@@ -29,4 +31,4 @@ protected:
   AudioBuffer audio_buffer_;
 };
 } // end of namespace whisper
-#endif // ROS2_WHISPER__AUDIO_BUFFER_COMPONENT_HPP_
+#endif // WHISPER_NODES__AUDIO_BUFFER_NODE_HPP_

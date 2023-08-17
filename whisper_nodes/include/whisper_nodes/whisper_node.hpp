@@ -1,5 +1,5 @@
-#ifndef ROS2_WHISPER__WHISPER_COMPONENT_HPP_
-#define ROS2_WHISPER__WHISPER_COMPONENT_HPP_
+#ifndef WHISPER_NODES__WHISPER_NODE_HPP_
+#define WHISPER_NODES__WHISPER_NODE_HPP_
 
 #include <chrono>
 #include <memory>
@@ -10,18 +10,20 @@
 
 #include "whisper_msgs/srv/inference.hpp"
 #include "whisper_msgs/srv/provide_audio.hpp"
-#include "whisper/model_manager.hpp"
-#include "whisper/whisper.hpp"
+#include "whisper_wrapper/model_manager.hpp"
+#include "whisper_wrapper/whisper.hpp"
 
 namespace whisper {
-class WhisperComponent : public rclcpp::Node {
+class WhisperNode {
 public:
-  WhisperComponent(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+  WhisperNode(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
   void initialize_parameters_();
   void on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                      whisper_msgs::srv::Inference::Response::SharedPtr response);
+
+  rclcpp::Node::SharedPtr node_ptr_;
 
   rclcpp::Service<whisper_msgs::srv::Inference>::SharedPtr inference_service_; // action server!
   rclcpp::Client<whisper_msgs::srv::ProvideAudio>::SharedPtr provide_client_;
@@ -31,4 +33,4 @@ protected:
 };
 } // end of namespace whisper
 
-#endif // ROS2_WHISPER__WHISPER_HPP_
+#endif // WHISPER_NODES__WHISPER_NODE_HPP_

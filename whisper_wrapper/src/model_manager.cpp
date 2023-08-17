@@ -1,4 +1,4 @@
-#include "whisper/model_manager.hpp"
+#include "whisper_wrapper/model_manager.hpp"
 
 namespace whisper {
 

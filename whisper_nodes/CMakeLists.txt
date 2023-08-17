@@ -14,10 +14,51 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
-find_package(whisper_msgs REQUIRED)
-find_package(whisper REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(whisper_msgs REQUIRED)
+find_package(whisper_wrapper REQUIRED)
+
+# whisper nodes
+add_library(whisper_nodes SHARED
+  src/audio_buffer_node.cpp
+  src/whisper_node.cpp
+)
+
+ament_target_dependencies(whisper_nodes
+  rclcpp
+  std_msgs
+  std_srvs
+  whisper_msgs
+  whisper_wrapper
+)
+
+target_include_directories(whisper_nodes
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+ament_export_dependencies(
+  rclcpp
+  std_msgs
+  std_srvs
+  whisper_msgs
+  whisper_wrapper
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+install(
+  TARGETS whisper_nodes
+  EXPORT export_${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  INCLUDES DESTINATION include
+)
 
 # audio buffer component
 add_library(audio_buffer_component SHARED
@@ -27,15 +68,10 @@ add_library(audio_buffer_component SHARED
 ament_target_dependencies(audio_buffer_component
   rclcpp
   rclcpp_components
-  whisper_msgs
-  whisper
-  std_msgs
-  std_srvs
 )
 
-target_include_directories(audio_buffer_component
-  PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+target_link_libraries(audio_buffer_component
+  whisper_nodes
 )
 
 rclcpp_components_register_node(audio_buffer_component
@@ -51,13 +87,10 @@ add_library(whisper_component SHARED
 ament_target_dependencies(whisper_component
   rclcpp
   rclcpp_components
-  whisper_msgs
-  whisper
 )
 
-target_include_directories(whisper_component
-  PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+target_link_libraries(whisper_component
+  whisper_nodes
 )
 
 rclcpp_components_register_node(whisper_component
@@ -67,7 +100,7 @@ rclcpp_components_register_node(whisper_component
 
 # install components
 install(
-  TARGETS audio_buffer_component whisper_component
+  TARGETS audio_buffer_component# whisper_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )

@@ -1,4 +1,4 @@
-#include "whisper/whisper.hpp"
+#include "whisper_wrapper/whisper.hpp"
 
 namespace whisper {
 Whisper::Whisper(const std::string &model_path) {

@@ -1,5 +1,5 @@
-#ifndef WHISPER__WHISPER_HPP_
-#define WHISPER__WHISPER_HPP_
+#ifndef WHISPER_WRAPPER__WHISPER_HPP_
+#define WHISPER_WRAPPER__WHISPER_HPP_
 
 #include <string>
 #include <vector>
@@ -21,4 +21,4 @@ public:
 };
 } // end of namespace whisper
 
-#endif // WHISPER__WHISPER_HPP_
+#endif // WHISPER_WRAPPER__WHISPER_HPP_

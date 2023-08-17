@@ -13,7 +13,7 @@
   <exec_depend>whisper</exec_depend>
   <exec_depend>whisper_cpp_vendor</exec_depend>
   <exec_depend>whisper_msgs</exec_depend>
-  <exec_depend>whisper_wrapper</exec_depend>
+  <exec_depend>whisper</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

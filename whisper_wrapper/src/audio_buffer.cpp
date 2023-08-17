@@ -1,4 +1,4 @@
-#include "whisper/audio_buffer.hpp"
+#include "whisper_wrapper/audio_buffer.hpp"
 
 namespace whisper {
 AudioBuffer::AudioBuffer() {}

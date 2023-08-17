@@ -1,5 +1,5 @@
-#ifndef WHISPER__MODEL_MANAGER_HPP_
-#define WHISPER__MODEL_MANAGER_HPP_
+#ifndef WHISPER_WRAPPER__MODEL_MANAGER_HPP_
+#define WHISPER_WRAPPER__MODEL_MANAGER_HPP_
 
 #include <cstdlib>
 #include <filesystem>
@@ -30,4 +30,4 @@ protected:
 
 } // end of namespace whisper
 
-#endif // WHISPER__MODEL_MANAGER_HPP_
+#endif // WHISPER_WRAPPER__MODEL_MANAGER_HPP_
