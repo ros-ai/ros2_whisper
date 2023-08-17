@@ -1,0 +1,5 @@
+int8 n_processors
+---
+string message
+string[] text
+bool success
