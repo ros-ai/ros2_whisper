@@ -10,8 +10,8 @@ Whisper::Whisper(
 
 Whisper::~Whisper() { whisper_free(wctx_); }
 
-std::vector<std::string> Whisper::forward(const std::vector<float> &input) {
-  whisper_full_parallel(wctx_, wparams_, input.data(), input.size(), 1);
+std::vector<std::string> Whisper::forward(const std::vector<float> &input, int n_processors) {
+  whisper_full_parallel(wctx_, wparams_, input.data(), input.size(), n_processors);
   std::vector<std::string> segments;
   int n_segments = whisper_full_n_segments(wctx_);
   for (int i = 0; i < n_segments; i++) {

@@ -10,7 +10,9 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>ros2_whisper_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
   <depend>whisper_cpp_vendor</depend>
 
   <test_depend>ament_lint_auto</test_depend>

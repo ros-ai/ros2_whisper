@@ -10,6 +10,7 @@
 
 #include "ros2_whisper/audio_buffer.hpp"
 #include "ros2_whisper/whisper.hpp"
+#include "ros2_whisper_msgs/srv/inference.hpp"
 
 namespace ros2_whisper {
 class InferenceServer {
@@ -17,16 +18,16 @@ public:
   InferenceServer(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
-  void on_inference(const std_srvs::srv::Trigger::Request::SharedPtr requset,
-                    std_srvs::srv::Trigger::Response::SharedPtr response);
+  void on_inference(const ros2_whisper_msgs::srv::Inference::Request::SharedPtr requset,
+                    ros2_whisper_msgs::srv::Inference::Response::SharedPtr response);
 
   rclcpp::Node::SharedPtr node_ptr_;
 
   std::atomic_bool record_audio_;
 
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_audio_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr clear_audio_buffer_service_;
-  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr run_inference_service_;
+  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr record_service_;
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr clear_service_;
+  rclcpp::Service<ros2_whisper_msgs::srv::Inference>::SharedPtr inference_service_;
 
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_subscription_;
 
@@ -34,5 +35,4 @@ protected:
   Whisper whisper_;
 };
 } // end of namespace ros2_whisper
-
 #endif // ROS2_WHISPER__INFERENCE_SERVER_HPP_

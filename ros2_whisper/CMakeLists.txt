@@ -5,13 +5,19 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(ros2_whisper_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(whisper_cpp_vendor REQUIRED)
 
+# ros2_whisper
 add_library(ros2_whisper SHARED
   src/audio_buffer.cpp
   src/inference_server.cpp
@@ -33,9 +39,10 @@ target_include_directories(ros2_whisper
 
 ament_target_dependencies(ros2_whisper
   rclcpp
+  ros2_whisper_msgs
   std_msgs
   std_srvs
-  whisper_cpp_vendor
+  whisper_cpp_vendor  
 )
 
 target_link_libraries(ros2_whisper
@@ -61,11 +68,7 @@ install(
   INCLUDES DESTINATION include
 )
 
-
-
-
-
-
+# nodes
 
 
 add_executable(test_node src/test_node.cpp)

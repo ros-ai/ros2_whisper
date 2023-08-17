@@ -17,7 +17,7 @@ public:
   Whisper(const rclcpp::node_interfaces::NodeParametersInterface::SharedPtr parameter_interface);
   ~Whisper();
 
-  std::vector<std::string> forward(const std::vector<float> &input);
+  std::vector<std::string> forward(const std::vector<float> &input, int n_processors = 1);
 
 protected:
   void initialize_parameters_();
