@@ -22,5 +22,4 @@ std::vector<std::string> Whisper::forward(const std::vector<float> &input, int n
   }
   return segments;
 }
-
 } // end of namespace whisper

@@ -30,5 +30,4 @@ protected:
   Whisper whisper_;
 };
 } // end of namespace whisper
-
 #endif // WHISPER_NODES__WHISPER_NODE_HPP_

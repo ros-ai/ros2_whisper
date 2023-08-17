@@ -18,6 +18,5 @@ protected:
   whisper::AudioBufferNode audio_buffer_node_;
 };
 } // end of namespace whisper
-
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(whisper::AudioBufferComponent)

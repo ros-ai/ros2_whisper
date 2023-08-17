@@ -43,28 +43,13 @@ void WhisperNode::initialize_parameters_() {
 
 void WhisperNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                                 whisper_msgs::srv::Inference::Response::SharedPtr response) {
-  // retrieved audio
-  // running inference
-  // done
-
-  // auto future_and_request_id = provide_client_->async_send_request(
-  //     provide_request//,
-  //     // [this](rclcpp::Client<whisper_msgs::srv::ProvideAudio>::SharedFuture future) {
-  //     //   auto response = future.get();
-  //     //   if (response->success) {
-  //     //     // run inference
-  //     //     auto segments = whisper_.forward(response->audio.data, 1);
-
-  //     //     for (const auto &segment : segments) {
-  //     //       RCLCPP_INFO(node_ptr_->get_logger(), "segment: %s", segment.c_str());
-  //     //     }
-  //     //   }
-  //     // }
-  //     );
-
-  // future_and_request_id.future.get()->
-
-  // if available run inference on cb?
+  if (request->audio.layout.dim[0] <= 0) {
+    response->info = "No audio data provided.";
+    response->success = false;
+    return;
+  }
+  response->segments = whisper_.forward(request->audio.data.data(), request->n_processors);
+  response->info = "Inference successful.";
+  response->success = true;
 }
-
 } // end of namespace whisper

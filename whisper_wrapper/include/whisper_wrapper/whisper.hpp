@@ -20,5 +20,4 @@ public:
   whisper_full_params params;
 };
 } // end of namespace whisper
-
 #endif // WHISPER_WRAPPER__WHISPER_HPP_

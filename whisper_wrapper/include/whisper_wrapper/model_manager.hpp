@@ -8,7 +8,6 @@
 #include <string>
 
 namespace whisper {
-
 class ModelManager {
 public:
   ModelManager(const std::string &src = "https://huggingface.co/ggerganov/whisper.cpp",
@@ -27,7 +26,5 @@ protected:
   std::string pfx_;
   std::filesystem::path cache_path_;
 };
-
 } // end of namespace whisper
-
 #endif // WHISPER_WRAPPER__MODEL_MANAGER_HPP_

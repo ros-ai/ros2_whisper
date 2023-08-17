@@ -40,5 +40,4 @@ void ModelManager::mkdir(const std::string &path) {
 std::string ModelManager::model_name_to_file_name_(const std::string &model_name) {
   return "ggml-" + model_name + ".bin";
 }
-
 } // end of namespace whisper

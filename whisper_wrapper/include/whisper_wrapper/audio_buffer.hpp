@@ -18,7 +18,5 @@ public:
 protected:
   std::vector<std::int16_t> audio_data_;
 };
-
 } // end of namespace whisper
-
 #endif // WHISPER_WRAPPER__AUDIO_BUFFER_HPP_
