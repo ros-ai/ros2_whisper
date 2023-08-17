@@ -6,7 +6,7 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_
 
   // create inference service
   inference_service_ = node_ptr_->create_service<whisper_msgs::srv::Inference>(
-      "~/inference",
+      "~/run",
       std::bind(&InferenceNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
 
   // initialize model
@@ -42,7 +42,7 @@ void InferenceNode::initialize_parameters_() {
 }
 
 void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
-                                whisper_msgs::srv::Inference::Response::SharedPtr response) {
+                                  whisper_msgs::srv::Inference::Response::SharedPtr response) {
   if (request->audio.data.size() <= 0) {
     response->info = "No audio data provided.";
     response->success = false;

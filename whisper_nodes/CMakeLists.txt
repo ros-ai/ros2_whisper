@@ -12,27 +12,26 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(std_srvs REQUIRED)
-find_package(whisper_msgs REQUIRED)
-find_package(whisper_wrapper REQUIRED)
-
-# whisper nodes
-add_library(whisper_nodes SHARED
-  src/listen_node.cpp
-  src/inference_node.cpp
-)
 
 set(WHISPER_NODES_DEPENDENCIES
+  builtin_interfaces
   rclcpp
   rclcpp_action
   std_msgs
   std_srvs
   whisper_msgs
   whisper_wrapper
+)
+
+foreach(DEPENDENCY IN LISTS WHISPER_NODES_DEPENDENCIES)
+  find_package(${DEPENDENCY} REQUIRED)  
+endforeach()
+
+# whisper nodes
+add_library(whisper_nodes SHARED
+  src/listen_node.cpp
+  src/inference_node.cpp
 )
 
 ament_target_dependencies(whisper_nodes

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <thread>
 
+#include "builtin_interfaces/msg/duration.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "std_msgs/msg/int16_multi_array.hpp"
@@ -31,7 +32,7 @@ protected:
 
   rclcpp::Node::SharedPtr node_ptr_;
 
-  std::atomic_bool record_;
+  std::atomic_bool recording_;
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_subscription_;
   rclcpp_action::Server<ListenAction>::SharedPtr record_audio_action_server_;
 

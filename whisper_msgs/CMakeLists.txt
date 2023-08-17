@@ -7,6 +7,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(std_msgs REQUIRED)
 
@@ -14,7 +15,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/Listen.action"
   "srv/Inference.srv"
   DEPENDENCIES
-  std_msgs
+    builtin_interfaces
+    std_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime std_msgs)
