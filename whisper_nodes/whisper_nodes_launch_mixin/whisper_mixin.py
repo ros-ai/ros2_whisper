@@ -6,7 +6,7 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 
-class AudioBufferMixin:
+class ListenMixin:
     @staticmethod
     def composable_node_listen(**kwargs) -> ComposableNode:
         return ComposableNode(

@@ -1,1 +1,1 @@
-from .whisper_mixin import AudioBufferMixin, WhisperMixin
+from .whisper_mixin import ListenMixin, WhisperMixin

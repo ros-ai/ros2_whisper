@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from whisper_nodes_launch_mixin import AudioBufferMixin, WhisperMixin
+from whisper_nodes_launch_mixin import ListenMixin, WhisperMixin
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -22,7 +22,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(
         WhisperMixin.composable_node_container_whisper(
             composable_node_descriptions=[
-                AudioBufferMixin.composable_node_list(
+                ListenMixin.composable_node_listen(
                     remappings=[("/listen/audio", "/audio_listener/audio")],
                 ),
                 WhisperMixin.composable_node_whisper(
