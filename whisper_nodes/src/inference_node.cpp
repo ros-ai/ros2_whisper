@@ -2,12 +2,16 @@
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(node_ptr) {
-  initialize_parameters_();
+  declare_parameters_();
 
   // create inference service
   inference_service_ = node_ptr_->create_service<whisper_msgs::srv::Inference>(
-      "~/run",
+      "inference",
       std::bind(&InferenceNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
+
+  // parameter callback handle
+  on_parameter_set_handle_ = node_ptr_->add_on_set_parameters_callback(
+      std::bind(&InferenceNode::on_parameter_set_, this, std::placeholders::_1));
 
   // initialize model
   std::string model_name = node_ptr_->get_parameter("model_name").as_string();
@@ -29,7 +33,7 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s initialized.", model_name.c_str());
 }
 
-void InferenceNode::initialize_parameters_() {
+void InferenceNode::declare_parameters_() {
   if (!node_ptr_->has_parameter("model_name")) {
     node_ptr_->declare_parameter("model_name", rclcpp::ParameterValue("base.en"));
   }
@@ -51,5 +55,23 @@ void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::S
   response->segments = whisper_.forward(request->audio.data, request->n_processors);
   response->info = "Inference successful.";
   response->success = true;
+}
+
+rcl_interfaces::msg::SetParametersResult
+InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameters) {
+  rcl_interfaces::msg::SetParametersResult result;
+  for (const auto &parameter : parameters) {
+    if (parameter.get_name() == "n_threads") {
+      whisper_.params.n_threads = parameter.as_int();
+      RCLCPP_INFO(node_ptr_->get_logger(), "Parameter %s set to %d.", parameter.get_name().c_str(),
+                  whisper_.params.n_threads);
+      continue;
+    }
+    result.reason = "Parameter " + parameter.get_name() + " not handled.";
+    result.successful = false;
+    RCLCPP_WARN(node_ptr_->get_logger(), result.reason.c_str());
+  }
+  result.successful = true;
+  return result;
 }
 } // end of namespace whisper

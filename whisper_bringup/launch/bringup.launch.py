@@ -23,7 +23,7 @@ def generate_launch_description() -> LaunchDescription:
         WhisperNodesMixin.composable_node_container(
             composable_node_descriptions=[
                 WhisperNodesMixin.composable_node_listen(
-                    remappings=[("/whisper/listen/audio", "/audio_listener/audio")],
+                    remappings=[("/whisper/audio", "/audio_listener/audio")],
                     namespace="whisper",
                 ),
                 WhisperNodesMixin.composable_node_inference(

@@ -16,6 +16,7 @@ find_package(rclcpp_components REQUIRED)
 
 set(WHISPER_NODES_DEPENDENCIES
   builtin_interfaces
+  rcl_interfaces
   rclcpp
   rclcpp_action
   std_msgs

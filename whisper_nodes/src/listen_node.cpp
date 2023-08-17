@@ -5,14 +5,14 @@ ListenNode::ListenNode(const rclcpp::Node::SharedPtr node_ptr)
     : node_ptr_(node_ptr), recording_(false) {
 
   audio_subscription_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
-      "~/audio", 10, [this](const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
+      "audio", 10, [this](const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
         if (recording_) {
           audio_buffer_.add_audio_data(msg->data);
         }
       });
 
   record_audio_action_server_ = rclcpp_action::create_server<ListenAction>(
-      node_ptr_, "~/record",
+      node_ptr_, "record",
       std::bind(&ListenNode::on_record_audio_goal_, this, std::placeholders::_1,
                 std::placeholders::_2),
       std::bind(&ListenNode::on_record_audio_cancel_, this, std::placeholders::_1),
