@@ -10,7 +10,7 @@ class AudioBufferMixin:
     @staticmethod
     def composable_node_audio_buffer(**kwargs) -> ComposableNode:
         return ComposableNode(
-            package="whisper",
+            package="whisper_nodes",
             plugin="whisper::AudioBufferComponent",
             name="audio_buffer",
             extra_arguments=[{"use_intra_process_comms": True}],
@@ -71,7 +71,7 @@ class WhisperMixin:
     @staticmethod
     def composable_node_whisper(**kwargs) -> ComposableNode:
         return ComposableNode(
-            package="whisper",
+            package="whisper_nodes",
             plugin="whisper::WhisperComponent",
             name="whisper",
             extra_arguments=[{"use_intra_process_comms": True}],
