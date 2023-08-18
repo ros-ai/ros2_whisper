@@ -32,6 +32,7 @@ protected:
 
   ModelManager model_manager_;
   Whisper whisper_;
+  std::string language_;
 };
 } // end of namespace whisper
 #endif // WHISPER_NODES__INFERENCE_NODE_HPP_

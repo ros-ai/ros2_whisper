@@ -1,7 +1,8 @@
 #include "whisper_nodes/inference_node.hpp"
 
 namespace whisper {
-InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_(node_ptr) {
+InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
+    : node_ptr_(node_ptr), language_("en") {
   declare_parameters_();
 
   // create inference service
@@ -31,17 +32,21 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr) : node_ptr_
   RCLCPP_INFO(node_ptr_->get_logger(), "Initializing model %s...", model_name.c_str());
   whisper_.initialize(model_manager_.get_model_path(model_name));
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s initialized.", model_name.c_str());
+
+  language_ = node_ptr_->get_parameter("language").as_string();
+  whisper_.params.language = language_.c_str();
+  whisper_.params.n_threads = node_ptr_->get_parameter("n_threads").as_int();
 }
 
 void InferenceNode::declare_parameters_() {
   if (!node_ptr_->has_parameter("model_name")) {
-    node_ptr_->declare_parameter("model_name", rclcpp::ParameterValue("base.en"));
+    node_ptr_->declare_parameter("model_name", "base.en");
   }
   if (!node_ptr_->has_parameter("language")) {
-    node_ptr_->declare_parameter("language", rclcpp::ParameterValue("en"));
+    node_ptr_->declare_parameter("language", "en");
   }
   if (!node_ptr_->has_parameter("n_threads")) {
-    node_ptr_->declare_parameter("n_threads", rclcpp::ParameterValue(1));
+    node_ptr_->declare_parameter("n_threads", 1);
   }
 }
 
