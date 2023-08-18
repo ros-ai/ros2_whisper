@@ -13,3 +13,11 @@ colcon build --symlink-install
 ```
 
 ## Run
+Run the inference nodes (this will download models to `$HOME/.cache/whisper.cpp`):
+```shell
+ros2 launch whisper_bringup bringup.launch.py n_thread:=8
+```
+Run a client node (activated on voice threshold):
+```shell
+ros2 run whisper_demos voice_threshold_node
+```
