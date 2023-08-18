@@ -1,6 +1,0 @@
-std_msgs/Float32MultiArray audio
-int8 n_processors
----
-string info
-string text
-bool success
