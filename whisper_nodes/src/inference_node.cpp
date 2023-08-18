@@ -57,7 +57,9 @@ void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::S
     response->success = false;
     return;
   }
-  response->segments = whisper_.forward(request->audio.data, request->n_processors);
+
+  auto segments = whisper_.forward(request->audio.data, request->n_processors);
+  response->text = std::accumulate(segments.begin(), segments.end(), std::string());
   response->info = "Inference successful.";
   response->success = true;
 }

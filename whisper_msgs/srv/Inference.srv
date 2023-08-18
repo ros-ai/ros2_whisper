@@ -2,5 +2,5 @@ std_msgs/Float32MultiArray audio
 int8 n_processors
 ---
 string info
-string[] segments
+string text
 bool success
