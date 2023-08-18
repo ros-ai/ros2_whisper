@@ -2,12 +2,14 @@
 
 namespace whisper {
 ListenNode::ListenNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), listening_(false), audio_buffer_(100) {
+    : node_ptr_(node_ptr), listening_(false), audio_ring_buffer_(5) {
 
   audio_subscription_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
-      "audio", 10, [this](const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
+      "audio", 5, [this](const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
         if (listening_) {
-          audio_buffer_.ring_buffer.enqueue(msg->data);
+          std::memcpy(audio_chunk_.audio.data(), msg->data.data(),
+                      whisper_msgs::msg::AudioChunk::CHUNK_SIZE);
+          audio_ring_buffer_.data.enqueue(audio_chunk_);
         }
       });
 
@@ -47,31 +49,27 @@ void ListenNode::listen_(const std::shared_ptr<ListenGoalHandle> goal_handle) {
   start_time_ = node_ptr_->now();
   auto max_duration = goal_handle->get_goal()->max_duration;
 
-  std_msgs::msg::MultiArrayDimension dim;
-  dim.label = "audio";
-  dim.stride = 1;
-  feedback->audio_buffer.layout.data_offset = 0;
-  feedback->audio_buffer.layout.dim.push_back(dim);
-
   while (listening_) {
-    if (audio_buffer_.ring_buffer.is_full()) {
+    if (audio_ring_buffer_.data.is_full()) {
       RCLCPP_WARN(node_ptr_->get_logger(), "Audio buffer is full!");
     }
 
-    if (!audio_buffer_.ring_buffer.has_data()) {
+    if (!audio_ring_buffer_.data.has_data()) {
       continue;
     }
-    feedback->audio_buffer.data = AudioBuffer::normalize(audio_buffer_.ring_buffer.dequeue());
-    feedback->audio_buffer.layout.dim[0].size = feedback->audio_buffer.data.size();
+
+    feedback->audio_chunk = audio_ring_buffer_.data.dequeue();
     goal_handle->publish_feedback(feedback);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     if (node_ptr_->now() - start_time_ > max_duration) {
+      audio_ring_buffer_.data.clear();
       listening_ = false;
       break;
     }
   }
 
+  audio_ring_buffer_.data.clear();
   listening_ = false;
 }
 } // end of namespace whisper

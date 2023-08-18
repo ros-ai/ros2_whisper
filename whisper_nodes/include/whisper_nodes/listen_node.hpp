@@ -8,9 +8,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "std_msgs/msg/int16_multi_array.hpp"
-#include "std_msgs/msg/multi_array_dimension.hpp"
 
 #include "whisper_msgs/action/listen.hpp"
+#include "whisper_msgs/msg/audio_chunk.hpp"
 #include "whisper_wrapper/audio_buffer.hpp"
 
 namespace whisper {
@@ -36,7 +36,8 @@ protected:
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_subscription_;
   rclcpp_action::Server<ListenAction>::SharedPtr listen_action_server_;
 
-  AudioBuffer audio_buffer_;
+  whisper_msgs::msg::AudioChunk audio_chunk_;
+  AudioRingBuffer audio_ring_buffer_;
 };
 } // end of namespace whisper
 #endif // WHISPER_NODES__LISTEN_NODE_HPP_
