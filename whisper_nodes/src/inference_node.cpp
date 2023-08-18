@@ -15,6 +15,10 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
       std::bind(&InferenceNode::on_parameter_set_, this, std::placeholders::_1));
 
   // initialize model
+  initialize_whisper_();
+}
+
+void InferenceNode::initialize_whisper_() {
   std::string model_name = node_ptr_->get_parameter("model_name").as_string();
   RCLCPP_INFO(node_ptr_->get_logger(), "Checking if model %s is available...", model_name.c_str());
   if (!model_manager_.is_available(model_name)) {
@@ -36,31 +40,31 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
   language_ = node_ptr_->get_parameter("language").as_string();
   whisper_.params.language = language_.c_str();
   whisper_.params.n_threads = node_ptr_->get_parameter("n_threads").as_int();
+  whisper_.params.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
 }
 
 void InferenceNode::declare_parameters_() {
-  if (!node_ptr_->has_parameter("model_name")) {
-    node_ptr_->declare_parameter("model_name", "base.en");
-  }
-  if (!node_ptr_->has_parameter("language")) {
-    node_ptr_->declare_parameter("language", "en");
-  }
-  if (!node_ptr_->has_parameter("n_threads")) {
-    node_ptr_->declare_parameter("n_threads", 1);
-  }
+  node_ptr_->declare_parameter("model_name", "base.en");
+  // consider other parameters:
+  // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
+  node_ptr_->declare_parameter("language", "en");
+  node_ptr_->declare_parameter("n_threads", 1);
+  node_ptr_->declare_parameter("print_progress", false);
 }
 
 void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                                   whisper_msgs::srv::Inference::Response::SharedPtr response) {
   if (request->audio.data.size() <= 0) {
     response->info = "No audio data provided.";
+    RCLCPP_INFO(node_ptr_->get_logger(), response->info.c_str());
     response->success = false;
     return;
   }
-
+  RCLCPP_INFO(node_ptr_->get_logger(), "Running inference...");
   auto segments = whisper_.forward(request->audio.data, request->n_processors);
   response->text = std::accumulate(segments.begin(), segments.end(), std::string());
   response->info = "Inference successful.";
+  RCLCPP_INFO(node_ptr_->get_logger(), response->info.c_str());
   response->success = true;
 }
 

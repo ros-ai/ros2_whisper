@@ -21,6 +21,7 @@ public:
 
 protected:
   void declare_parameters_();
+  void initialize_whisper_();
   void on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
                      whisper_msgs::srv::Inference::Response::SharedPtr response);
   rcl_interfaces::msg::SetParametersResult
