@@ -2,4 +2,4 @@ builtin_interfaces/Duration max_duration
 ---
 string info
 ---
-std_msgs/Float32MultiArray audio
+std_msgs/Float32MultiArray audio_buffer
