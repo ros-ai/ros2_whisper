@@ -9,7 +9,7 @@
 namespace whisper {
 class Whisper {
 public:
-  Whisper() = default;
+  Whisper();
   Whisper(const std::string &model_path);
   ~Whisper();
 

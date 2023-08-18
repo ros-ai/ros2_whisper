@@ -22,17 +22,18 @@ public:
   ListenNode(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
-  rclcpp_action::GoalResponse on_record_audio_goal_(const rclcpp_action::GoalUUID &uuid,
+  rclcpp_action::GoalResponse on_listen_goal_(const rclcpp_action::GoalUUID &uuid,
                                                     const ListenAction::Goal::ConstSharedPtr goal);
   rclcpp_action::CancelResponse
-  on_record_audio_cancel_(const std::shared_ptr<ListenGoalHandle> goal_handle);
-  void on_record_audio_accepted_(const std::shared_ptr<ListenGoalHandle> goal_handle);
+  on_listen_cancel_(const std::shared_ptr<ListenGoalHandle> goal_handle);
+  void on_listen_goal_accepted_(const std::shared_ptr<ListenGoalHandle> goal_handle);
 
   void record_audio_(const std::shared_ptr<ListenGoalHandle> goal_handle);
 
   rclcpp::Node::SharedPtr node_ptr_;
 
   std::atomic_bool recording_;
+  rclcpp::Time start_time_;
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_subscription_;
   rclcpp_action::Server<ListenAction>::SharedPtr record_audio_action_server_;
 
