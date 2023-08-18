@@ -5,6 +5,12 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
     : node_ptr_(node_ptr), language_("en") {
   declare_parameters_();
 
+  // create feedback subscription
+  listen_feedback_subscription_ =
+      node_ptr_->create_subscription<whisper_msgs::action::Listen_FeedbackMessage>(
+          "listen/_action/feedback", 10,
+          std::bind(&InferenceNode::on_listen_feedback_, this, std::placeholders::_1));
+
   // create inference service
   inference_service_ = node_ptr_->create_service<whisper_msgs::srv::Inference>(
       "inference",
@@ -16,6 +22,15 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
 
   // initialize model
   initialize_whisper_();
+}
+
+void InferenceNode::declare_parameters_() {
+  node_ptr_->declare_parameter("model_name", "base.en");
+  // consider other parameters:
+  // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
+  node_ptr_->declare_parameter("language", "en");
+  node_ptr_->declare_parameter("n_threads", 1);
+  node_ptr_->declare_parameter("print_progress", false);
 }
 
 void InferenceNode::initialize_whisper_() {
@@ -43,13 +58,9 @@ void InferenceNode::initialize_whisper_() {
   whisper_.params.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
 }
 
-void InferenceNode::declare_parameters_() {
-  node_ptr_->declare_parameter("model_name", "base.en");
-  // consider other parameters:
-  // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
-  node_ptr_->declare_parameter("language", "en");
-  node_ptr_->declare_parameter("n_threads", 1);
-  node_ptr_->declare_parameter("print_progress", false);
+void InferenceNode::on_listen_feedback_(
+    const whisper_msgs::action::Listen_FeedbackMessage::SharedPtr msg) {
+  RCLCPP_INFO(node_ptr_->get_logger(), "Received feedback.");
 }
 
 void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
