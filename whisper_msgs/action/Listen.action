@@ -1,7 +1,5 @@
 builtin_interfaces/Duration max_duration
 ---
 string info
-bool success
-std_msgs/Float32MultiArray audio
 ---
-int32 size
+std_msgs/Float32MultiArray audio

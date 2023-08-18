@@ -11,6 +11,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
 find_package(whisper_cpp_vendor REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
@@ -32,6 +33,7 @@ target_include_directories(${PROJECT_NAME}
 )
 
 ament_target_dependencies(${PROJECT_NAME}
+  rclcpp
   whisper_cpp_vendor  
 )
 
@@ -41,6 +43,7 @@ target_link_libraries(${PROJECT_NAME}
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(
+  rclcpp
   whisper_cpp_vendor
 )
 
