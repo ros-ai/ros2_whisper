@@ -11,8 +11,8 @@ void Whisper::initialize(const std::string &model_path) {
   ctx = whisper_init_from_file(model_path.c_str());
 }
 
-std::vector<std::string> Whisper::forward(const std::vector<float> &input, int n_processors) {
-  if (whisper_full_parallel(ctx, params, input.data(), input.size(), n_processors) != 0) {
+std::string Whisper::forward(const std::vector<float> &input) {
+  if (whisper_full(ctx, params, input.data(), input.size()) != 0) {
     return {};
   }
   std::vector<std::string> segments;
@@ -20,6 +20,6 @@ std::vector<std::string> Whisper::forward(const std::vector<float> &input, int n
   for (int i = 0; i < n_segments; ++i) {
     segments.push_back(whisper_full_get_segment_text(ctx, i));
   }
-  return segments;
+  return std::accumulate(segments.begin(), segments.end(), std::string());
 }
 } // end of namespace whisper

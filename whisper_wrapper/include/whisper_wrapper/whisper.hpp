@@ -1,6 +1,7 @@
 #ifndef WHISPER_WRAPPER__WHISPER_HPP_
 #define WHISPER_WRAPPER__WHISPER_HPP_
 
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -14,7 +15,7 @@ public:
   ~Whisper();
 
   void initialize(const std::string &model_path);
-  std::vector<std::string> forward(const std::vector<float> &input, int n_processors = 1);
+  std::string forward(const std::vector<float> &input);
 
   whisper_context *ctx;
   whisper_full_params params;
