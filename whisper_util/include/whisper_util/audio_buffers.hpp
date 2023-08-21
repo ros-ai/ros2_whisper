@@ -17,7 +17,7 @@ public:
   void append_new_audio(const std::vector<std::int16_t> &audio);
   void append_audio_from_new();
 
-  inline std::vector<float> get_audio() const { return audio_; }
+  inline const std::vector<float> &get_audio() const { return audio_; }
 
 protected:
   void clear_audio_();
