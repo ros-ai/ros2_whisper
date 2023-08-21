@@ -1,2 +1,0 @@
-int16 CHUNK_SIZE=1024
-int16[1024] audio

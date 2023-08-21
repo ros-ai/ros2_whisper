@@ -1,5 +1,6 @@
 builtin_interfaces/Duration max_duration
 ---
 string info
+string text
 ---
-whisper_msgs/AudioChunk audio_chunk
+string text 
