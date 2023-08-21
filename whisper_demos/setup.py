@@ -19,7 +19,7 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "voice_threshold_node = whisper_demos.voice_threshold_node:main",
+            "whisper_on_key = whisper_demos.whisper_on_key:main",
         ],
     },
 )
