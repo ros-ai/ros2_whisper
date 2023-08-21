@@ -17,14 +17,13 @@ public:
   void append_new_audio(const std::vector<std::int16_t> &audio);
   void append_audio_from_new();
 
-  inline const std::vector<float> &get_audio() const { return audio_; }
+  inline std::vector<float> get_audio() const { return audio_; }
 
 protected:
   void clear_audio_();
 
   std::size_t time_to_sample_count_(const std::chrono::milliseconds &ms);
 
-  // dequeue mutex
   std::mutex mutex_;
 
   std::size_t max_capacity_;

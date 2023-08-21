@@ -9,7 +9,7 @@ EpisodicBuffer::EpisodicBuffer(const std::chrono::milliseconds &max_capacity,
       };
 
 void EpisodicBuffer::append_new_audio(const std::vector<std::int16_t> &audio) {
-  // NOTE: this could be a ring buffer
+  // TODO: this must be a ring buffer!
   std::lock_guard<std::mutex> lock(mutex_);
   std::transform(audio.begin(), audio.end(), std::back_inserter(audio_new_),
                  [](const std::int16_t &sample) {
