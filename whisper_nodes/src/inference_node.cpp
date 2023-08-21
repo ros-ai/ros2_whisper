@@ -5,16 +5,16 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
     : node_ptr_(node_ptr), language_("en") {
   declare_parameters_();
 
-  // create feedback subscription
-  listen_feedback_subscription_ =
-      node_ptr_->create_subscription<whisper_msgs::action::Listen_FeedbackMessage>(
-          "listen/_action/feedback", 10,
-          std::bind(&InferenceNode::on_listen_feedback_, this, std::placeholders::_1));
+  // audio subscription
+  audio_sub_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
+      "audio", 10, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1));
 
-  // create inference service
-  inference_service_ = node_ptr_->create_service<whisper_msgs::srv::Inference>(
-      "inference",
-      std::bind(&InferenceNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2));
+  // inference action server
+  inference_action_server_ = rclcpp_action::create_server<Inference>(
+      node_ptr_, "listen",
+      std::bind(&InferenceNode::on_listen_, this, std::placeholders::_1, std::placeholders::_2),
+      std::bind(&InferenceNode::on_cancel_, this, std::placeholders::_1),
+      std::bind(&InferenceNode::on_accepted_, this, std::placeholders::_1));
 
   // parameter callback handle
   on_parameter_set_handle_ = node_ptr_->add_on_set_parameters_callback(
@@ -58,27 +58,6 @@ void InferenceNode::initialize_whisper_() {
   whisper_.params.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
 }
 
-void InferenceNode::on_listen_feedback_(
-    const whisper_msgs::action::Listen_FeedbackMessage::SharedPtr msg) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Received feedback.");
-}
-
-void InferenceNode::on_inference_(const whisper_msgs::srv::Inference::Request::SharedPtr request,
-                                  whisper_msgs::srv::Inference::Response::SharedPtr response) {
-  if (request->audio.data.size() <= 0) {
-    response->info = "No audio data provided.";
-    RCLCPP_INFO(node_ptr_->get_logger(), response->info.c_str());
-    response->success = false;
-    return;
-  }
-  RCLCPP_INFO(node_ptr_->get_logger(), "Running inference...");
-  auto segments = whisper_.forward(request->audio.data, request->n_processors);
-  response->text = std::accumulate(segments.begin(), segments.end(), std::string());
-  response->info = "Inference successful.";
-  RCLCPP_INFO(node_ptr_->get_logger(), response->info.c_str());
-  response->success = true;
-}
-
 rcl_interfaces::msg::SetParametersResult
 InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameters) {
   rcl_interfaces::msg::SetParametersResult result;
@@ -96,4 +75,17 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
   result.successful = true;
   return result;
 }
+
+void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
+  episodic_buffer_.append_new_audio(msg->data);
+}
+
+rclcpp_action::GoalResponse InferenceNode::on_listen_(const rclcpp_action::GoalUUID &uuid,
+                                                      std::shared_ptr<const Inference::Goal> goal) {
+}
+
+rclcpp_action::CancelResponse
+InferenceNode::on_cancel_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+
+void InferenceNode::on_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
 } // end of namespace whisper
