@@ -13,8 +13,8 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
   inference_action_server_ = rclcpp_action::create_server<Inference>(
       node_ptr_, "listen",
       std::bind(&InferenceNode::on_listen_, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&InferenceNode::on_cancel_, this, std::placeholders::_1),
-      std::bind(&InferenceNode::on_accepted_, this, std::placeholders::_1));
+      std::bind(&InferenceNode::on_cancel_listen_, this, std::placeholders::_1),
+      std::bind(&InferenceNode::on_listen_accepted_, this, std::placeholders::_1));
 
   // parameter callback handle
   on_parameter_set_handle_ = node_ptr_->add_on_set_parameters_callback(
@@ -85,7 +85,7 @@ rclcpp_action::GoalResponse InferenceNode::on_listen_(const rclcpp_action::GoalU
 }
 
 rclcpp_action::CancelResponse
-InferenceNode::on_cancel_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+InferenceNode::on_cancel_listen_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
 
-void InferenceNode::on_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+void InferenceNode::on_listen_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
 } // end of namespace whisper

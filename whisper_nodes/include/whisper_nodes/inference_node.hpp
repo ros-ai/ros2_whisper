@@ -27,10 +27,10 @@ public:
   InferenceNode(const rclcpp::Node::SharedPtr node_ptr);
 
 protected:
-  void declare_parameters_();
-  void initialize_whisper_();
+  rclcpp::Node::SharedPtr node_ptr_;
 
   // paramters
+  void declare_parameters_();
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr on_parameter_set_handle_;
   rcl_interfaces::msg::SetParametersResult
   on_parameter_set_(const std::vector<rclcpp::Parameter> &parameters);
@@ -43,10 +43,12 @@ protected:
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
   rclcpp_action::GoalResponse on_listen_(const rclcpp_action::GoalUUID &uuid,
                                          std::shared_ptr<const Inference::Goal> goal);
-  rclcpp_action::CancelResponse on_cancel_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  void on_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  rclcpp_action::CancelResponse
+  on_cancel_listen_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  void on_listen_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
 
-  rclcpp::Node::SharedPtr node_ptr_;
+  // whisper
+  void initialize_whisper_();
   ModelManager model_manager_;
   EpisodicBuffer episodic_buffer_;
   Whisper whisper_;
