@@ -11,10 +11,10 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
 
   // inference action server
   inference_action_server_ = rclcpp_action::create_server<Inference>(
-      node_ptr_, "listen",
-      std::bind(&InferenceNode::on_listen_, this, std::placeholders::_1, std::placeholders::_2),
-      std::bind(&InferenceNode::on_cancel_listen_, this, std::placeholders::_1),
-      std::bind(&InferenceNode::on_listen_accepted_, this, std::placeholders::_1));
+      node_ptr_, "inference",
+      std::bind(&InferenceNode::on_inference_, this, std::placeholders::_1, std::placeholders::_2),
+      std::bind(&InferenceNode::on_cancel_inference_, this, std::placeholders::_1),
+      std::bind(&InferenceNode::on_inference_accepted_, this, std::placeholders::_1));
 
   // parameter callback handle
   on_parameter_set_handle_ = node_ptr_->add_on_set_parameters_callback(
@@ -80,12 +80,26 @@ void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr ms
   episodic_buffer_.append_new_audio(msg->data);
 }
 
-rclcpp_action::GoalResponse InferenceNode::on_listen_(const rclcpp_action::GoalUUID &uuid,
-                                                      std::shared_ptr<const Inference::Goal> goal) {
+rclcpp_action::GoalResponse
+InferenceNode::on_inference_(const rclcpp_action::GoalUUID &uuid,
+                             std::shared_ptr<const Inference::Goal> goal) {
+  RCLCPP_INFO(node_ptr_->get_logger(), "Received inference request.");
+  return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
 rclcpp_action::CancelResponse
-InferenceNode::on_cancel_listen_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
 
-void InferenceNode::on_listen_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {
+  RCLCPP_INFO(node_ptr_->get_logger(), "Starting inference...");
+  auto result = std::make_shared<Inference::Result>();
+  // auto feedback = std::make_shared<Inference::Feedback>();
+
+  episodic_buffer_.append_audio_from_new();
+  auto text = whisper_.forward(episodic_buffer_.get_audio());
+
+  result->text = text;
+
+  goal_handle->succeed(result);
+}
 } // end of namespace whisper

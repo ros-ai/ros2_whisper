@@ -41,11 +41,11 @@ protected:
 
   // action server
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
-  rclcpp_action::GoalResponse on_listen_(const rclcpp_action::GoalUUID &uuid,
-                                         std::shared_ptr<const Inference::Goal> goal);
+  rclcpp_action::GoalResponse on_inference_(const rclcpp_action::GoalUUID &uuid,
+                                            std::shared_ptr<const Inference::Goal> goal);
   rclcpp_action::CancelResponse
-  on_cancel_listen_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  void on_listen_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
 
   // whisper
   void initialize_whisper_();
