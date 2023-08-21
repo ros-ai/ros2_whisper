@@ -16,6 +16,7 @@ public:
 
   void initialize(const std::string &model_path);
   std::string forward(const std::vector<float> &input);
+  std::vector<whisper_token> tokens();
 
   whisper_context *ctx;
   whisper_full_params params;
