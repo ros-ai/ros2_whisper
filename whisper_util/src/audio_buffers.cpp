@@ -32,8 +32,6 @@ void EpisodicBuffer::append_audio_from_new() {
   audio_new_.clear();
 }
 
-inline std::vector<float> EpisodicBuffer::get_audio() const { return audio_; }
-
 void EpisodicBuffer::clear_audio_() {
   // carry over old data
   std::vector<float> carry_over(audio_.end() - carry_over_, audio_.end());
