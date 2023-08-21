@@ -12,7 +12,7 @@
 namespace whisper {
 class EpisodicBuffer {
 public:
-  EpisodicBuffer(const std::chrono::milliseconds max_capacity = std::chrono::seconds(10),
+  EpisodicBuffer(const std::chrono::milliseconds &max_capacity = std::chrono::seconds(10),
                  const std::chrono::milliseconds &carry_over = std::chrono::milliseconds(200));
   void append_new_audio(const std::vector<std::int16_t> &audio);
   void append_audio_from_new();

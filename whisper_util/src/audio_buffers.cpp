@@ -1,9 +1,8 @@
 #include "whisper_util/audio_buffers.hpp"
 
 namespace whisper {
-EpisodicBuffer::EpisodicBuffer(
-    const std::chrono::milliseconds max_capacity = std::chrono::seconds(10),
-    const std::chrono::milliseconds &carry_over = std::chrono::milliseconds(200))
+EpisodicBuffer::EpisodicBuffer(const std::chrono::milliseconds &max_capacity,
+                               const std::chrono::milliseconds &carry_over)
     : max_capacity_(time_to_sample_count_(max_capacity)),
       carry_over_(time_to_sample_count_(carry_over)){
 
