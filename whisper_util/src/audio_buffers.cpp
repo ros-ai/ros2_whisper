@@ -1,4 +1,4 @@
-#include "whisper_wrapper/audio_buffers.hpp"
+#include "whisper_util/audio_buffers.hpp"
 
 namespace whisper {
 EpisodicBuffer::EpisodicBuffer(

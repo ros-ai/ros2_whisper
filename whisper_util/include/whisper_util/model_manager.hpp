@@ -1,5 +1,5 @@
-#ifndef WHISPER_WRAPPER__MODEL_MANAGER_HPP_
-#define WHISPER_WRAPPER__MODEL_MANAGER_HPP_
+#ifndef WHISPER_UTIL__MODEL_MANAGER_HPP_
+#define WHISPER_UTIL__MODEL_MANAGER_HPP_
 
 #include <cstdlib>
 #include <filesystem>
@@ -27,4 +27,4 @@ protected:
   std::filesystem::path cache_path_;
 };
 } // end of namespace whisper
-#endif // WHISPER_WRAPPER__MODEL_MANAGER_HPP_
+#endif // WHISPER_UTIL__MODEL_MANAGER_HPP_

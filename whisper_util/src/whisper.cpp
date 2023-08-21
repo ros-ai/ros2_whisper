@@ -1,4 +1,4 @@
-#include "whisper_wrapper/whisper.hpp"
+#include "whisper_util/whisper.hpp"
 
 namespace whisper {
 Whisper::Whisper() { params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY); }

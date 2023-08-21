@@ -1,5 +1,5 @@
-#ifndef WHISPER_WRAPPER__WHISPER_HPP_
-#define WHISPER_WRAPPER__WHISPER_HPP_
+#ifndef WHISPER_UTIL__WHISPER_HPP_
+#define WHISPER_UTIL__WHISPER_HPP_
 
 #include <numeric>
 #include <string>
@@ -22,4 +22,4 @@ public:
   whisper_full_params params;
 };
 } // end of namespace whisper
-#endif // WHISPER_WRAPPER__WHISPER_HPP_
+#endif // WHISPER_UTIL__WHISPER_HPP_

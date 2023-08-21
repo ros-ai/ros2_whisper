@@ -1,5 +1,5 @@
-#ifndef WHISPER_WRAPPER__AUDIO_BUFFERS_HPP_
-#define WHISPER_WRAPPER__AUDIO_BUFFERS_HPP_
+#ifndef WHISPER_UTIL__AUDIO_BUFFERS_HPP_
+#define WHISPER_UTIL__AUDIO_BUFFERS_HPP_
 
 #include <algorithm>
 #include <chrono>
@@ -33,4 +33,4 @@ protected:
   std::vector<float> audio_, audio_new_;
 };
 } // end of namespace whisper
-#endif // WHISPER_WRAPPER__AUDIO_BUFFERS_HPP_
+#endif // WHISPER_UTIL__AUDIO_BUFFERS_HPP_

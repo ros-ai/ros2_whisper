@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>whisper_wrapper</name>
+  <name>whisper_util</name>
   <version>1.0.0</version>
   <description>ROS 2 wrapper for whisper.cpp.</description>
   <maintainer email="m.huber_1994@hotmail.de">mhubii</maintainer>
