@@ -15,7 +15,7 @@ find_package(rclcpp REQUIRED)
 find_package(whisper_cpp_vendor REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
-  src/audio_buffer.cpp
+  src/audio_buffers.cpp
   src/model_manager.cpp
   src/whisper.cpp
 )
@@ -34,7 +34,7 @@ target_include_directories(${PROJECT_NAME}
 
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
-  whisper_cpp_vendor  
+  whisper_cpp_vendor
 )
 
 target_link_libraries(${PROJECT_NAME}
