@@ -22,7 +22,7 @@ set(WHISPER_NODES_DEPENDENCIES
   std_msgs
   std_srvs
   whisper_msgs
-  whisper_wrapper
+  whisper_util
 )
 
 foreach(DEPENDENCY IN LISTS WHISPER_NODES_DEPENDENCIES)
@@ -31,7 +31,6 @@ endforeach()
 
 # whisper nodes
 add_library(whisper_nodes SHARED
-  src/listen_node.cpp
   src/inference_node.cpp
 )
 
@@ -62,25 +61,6 @@ install(
   INCLUDES DESTINATION include
 )
 
-# audio buffer component
-add_library(listen_component SHARED
-  src/listen_component.cpp
-)
-
-ament_target_dependencies(listen_component
-  rclcpp
-  rclcpp_components
-)
-
-target_link_libraries(listen_component
-  whisper_nodes
-)
-
-rclcpp_components_register_node(listen_component
-  PLUGIN whisper::ListenComponent
-  EXECUTABLE listen
-)
-
 # whisper component
 add_library(inference_component SHARED
   src/inference_component.cpp
@@ -102,7 +82,7 @@ rclcpp_components_register_node(inference_component
 
 # install components
 install(
-  TARGETS listen_component inference_component
+  TARGETS inference_component
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
