@@ -13,7 +13,7 @@ class WhisperOnKey(Node):
         super().__init__(node_name=node_name)
 
         # whisper
-        self.whisper_client = ActionClient(self, Inference, "/whisper/listen")
+        self.whisper_client = ActionClient(self, Inference, "/whisper/inference")
 
         while not self.whisper_client.wait_for_server(1):
             self.get_logger().warn(
@@ -26,7 +26,7 @@ class WhisperOnKey(Node):
         self.key_listener = Listener(on_press=self.on_key)
         self.key_listener.start()
 
-        self.get_logger().info(self.info())
+        self.get_logger().info(self.info_string())
 
     def on_key(self, key) -> None:
         if key == Key.esc:
@@ -36,14 +36,40 @@ class WhisperOnKey(Node):
 
         if key == Key.space:
             # inference goal
+            self.on_space()
             return
 
-        self.get_logger().warn("Invalid key")
+    def on_space(self) -> None:
+        self.get_logger().info("Requesting inference..")
+        goal_msg = Inference.Goal()
+        goal_msg.max_duration = Duration(sec=10, nanosec=0)
+        future = self.whisper_client.send_goal_async(
+            goal_msg, feedback_callback=self.on_feedback
+        )
+        future.add_done_callback(self.on_goal_accepted)
 
-    def info(self) -> str:
+    def on_goal_accepted(self, future: Future) -> None:
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().error("Goal rejected.")
+            return
+
+        self.get_logger().info("Goal accepted.")
+
+        future = goal_handle.get_result_async()
+        future.add_done_callback(self.on_done)
+
+    def on_done(self, future: Future) -> None:
+        result: Inference.Result = future.result().result
+        self.get_logger().info(f"Received result: {result.text}")
+
+    def on_feedback(self, feedback: Inference.Feedback) -> None:
+        pass
+
+    def info_string(self) -> str:
         return (
-            "\n"
-            "\tStarting Whisper on Key demo.\n"
+            "\n\n"
+            "\tStarting demo.\n"
             "\tPress ESC to exit.\n"
             "\tPress space to start listening.\n"
             "\tPress space again to stop listening.\n"

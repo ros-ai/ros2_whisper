@@ -72,12 +72,12 @@ class WhisperNodesMixin(InferenceMixin):
     def composable_node_container(
         composable_node_descriptions: List[ComposableNode],
     ) -> ComposableNodeContainer:
-        whisper_nodes_container = ComposableNodeContainer(
-            name="whisper_nodes_container",
+        whisper_container = ComposableNodeContainer(
+            name="whisper_container",
             package="rclcpp_components",
             namespace="",
             executable="component_container",
             output="screen",
             composable_node_descriptions=composable_node_descriptions,
         )
-        return whisper_nodes_container
+        return whisper_container
