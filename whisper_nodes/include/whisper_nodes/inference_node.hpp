@@ -52,7 +52,7 @@ protected:
   // whisper
   void initialize_whisper_();
   ModelManager model_manager_;
-  BatchedBuffer episodic_buffer_;
+  BatchedBuffer batched_buffer_;
   Whisper whisper_;
   std::string language_;
 };

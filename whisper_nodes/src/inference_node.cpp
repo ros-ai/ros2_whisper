@@ -2,8 +2,8 @@
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), episodic_buffer_(node_ptr_->get_node_logging_interface()),
-      language_("en") {
+    : node_ptr_(node_ptr), running_inference_(false),
+      batched_buffer_(node_ptr_->get_node_logging_interface()), language_("en") {
   declare_parameters_();
 
   auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -82,7 +82,7 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
 }
 
 void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
-  episodic_buffer_.insert_from_stream(msg->data);
+  batched_buffer_.insert_from_stream(msg->data);
 }
 
 rclcpp_action::GoalResponse
@@ -111,21 +111,17 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
 
   inference_start_time_ = node_ptr_->now();
 
-  std::size_t previous_batch_idx;
-  while (node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration &&
-         rclcpp::ok()) {
-
-    auto text = whisper_.forward(episodic_buffer_.retrieve_audio_batch());
-    auto batch_idx = episodic_buffer_.batch_idx();
-
-    if (batch_idx != previous_batch_idx) {
-      RCLCPP_INFO(node_ptr_->get_logger(), "Epoch %d", batch_idx);
-      previous_batch_idx = batch_idx;
-      // feedback->text[batch_idx] = text;
-    }
-
-    feedback->batch_idx = batch_idx;
-    feedback->text[batch_idx] = text;
+  while (rclcpp::ok() &&
+         node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration) {
+    // if (goal_handle->get_goal()->max_duration.sec != 0 && // run until goal is canceled
+    //     goal_handle->get_goal()->max_duration.nanosec != 0 &&
+    //     node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration) {
+    //   RCLCPP_INFO(node_ptr_->get_logger(), "Exiting inference on time limit.");
+    //   break;
+    // }
+    RCLCPP_INFO(node_ptr_->get_logger(), "Running inference step...");
+    feedback->text = whisper_.forward(batched_buffer_.retrieve_audio_batch());
+    feedback->batch_idx = batched_buffer_.batch_idx();
     goal_handle->publish_feedback(feedback);
   }
   // result->text = text;
