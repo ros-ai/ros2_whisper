@@ -76,7 +76,7 @@ class WhisperNodesMixin(InferenceMixin):
             name="whisper_container",
             package="rclcpp_components",
             namespace="",
-            executable="component_container",
+            executable="component_container_mt", # TODO: add node why this is important
             output="screen",
             composable_node_descriptions=composable_node_descriptions,
         )
