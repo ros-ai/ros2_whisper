@@ -49,7 +49,7 @@ public:
   std::vector<float> retrieve_audio_batch();
   void clear();
 
-  inline const std::uint8_t &batch_idx() const { return batch_idx_; };
+  inline const std::uint16_t &batch_idx() const { return batch_idx_; };
 
 protected:
   bool is_new_batch_();
@@ -61,7 +61,7 @@ protected:
 
   std::size_t batch_capacity_;
   std::size_t carry_over_capacity_;
-  std::uint8_t batch_idx_;
+  std::uint16_t batch_idx_;
 
   std::vector<float> audio_;
   RingBuffer audio_buffer_;

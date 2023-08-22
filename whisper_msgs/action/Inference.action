@@ -3,5 +3,5 @@ builtin_interfaces/Duration max_duration
 string info
 string text
 ---
-uint8 batch_idx
+uint16 batch_idx
 string text
