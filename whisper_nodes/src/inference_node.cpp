@@ -2,12 +2,17 @@
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), language_("en") {
+    : node_ptr_(node_ptr), episodic_buffer_(node_ptr_->get_node_logging_interface()),
+      language_("en") {
   declare_parameters_();
+
+  auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  rclcpp::SubscriptionOptions options;
+  options.callback_group = cb_group;
 
   // audio subscription
   audio_sub_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
-      "audio", 10, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1));
+      "audio", 10, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1), options);
 
   // inference action server
   inference_action_server_ = rclcpp_action::create_server<Inference>(
@@ -77,29 +82,59 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
 }
 
 void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
-  episodic_buffer_.append_new_audio(msg->data);
+  episodic_buffer_.insert_from_stream(msg->data);
 }
 
 rclcpp_action::GoalResponse
 InferenceNode::on_inference_(const rclcpp_action::GoalUUID &uuid,
                              std::shared_ptr<const Inference::Goal> goal) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Received inference request.");
+  if (running_inference_) {
+    RCLCPP_WARN(node_ptr_->get_logger(), "Inference already running.");
+    return rclcpp_action::GoalResponse::REJECT;
+  }
+
   return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
 rclcpp_action::CancelResponse
-InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle) {}
+InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle) {
+  RCLCPP_INFO(node_ptr_->get_logger(), "Canceling inference...");
+  return rclcpp_action::CancelResponse::ACCEPT;
+}
 
 void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Starting inference...");
+  running_inference_ = true;
   auto result = std::make_shared<Inference::Result>();
-  // auto feedback = std::make_shared<Inference::Feedback>();
+  auto feedback = std::make_shared<Inference::Feedback>();
 
-  episodic_buffer_.append_audio_from_new();
-  auto text = whisper_.forward(episodic_buffer_.get_audio());
+  inference_start_time_ = node_ptr_->now();
 
-  result->text = text;
+  std::size_t previous_batch_idx;
+  while (node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration &&
+         rclcpp::ok()) {
+
+    auto text = whisper_.forward(episodic_buffer_.retrieve_audio_batch());
+    auto batch_idx = episodic_buffer_.batch_idx();
+
+    if (batch_idx != previous_batch_idx) {
+      RCLCPP_INFO(node_ptr_->get_logger(), "Epoch %d", batch_idx);
+      previous_batch_idx = batch_idx;
+      // feedback->text[batch_idx] = text;
+    }
+
+    feedback->batch_idx = batch_idx;
+    feedback->text[batch_idx] = text;
+    goal_handle->publish_feedback(feedback);
+  }
+  // result->text = text;
+
+  // goal_handle->canceled
+  // goal_handle->is_canceling
+  // goal_handle->publish_feedback
 
   goal_handle->succeed(result);
+  running_inference_ = false;
 }
 } // end of namespace whisper

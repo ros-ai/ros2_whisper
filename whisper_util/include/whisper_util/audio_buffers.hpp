@@ -38,24 +38,30 @@ protected:
   std::size_t size_;
 };
 
-class EpisodicBuffer {
+class BatchedBuffer {
 public:
-  EpisodicBuffer(const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr &logging_interface,
-                 const std::chrono::milliseconds &episode_capacity = std::chrono::seconds(10),
-                 const std::chrono::milliseconds &audio_buffer_capacity = std::chrono::seconds(2),
-                 const std::chrono::milliseconds &carry_over = std::chrono::milliseconds(200));
+  BatchedBuffer(
+      const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr &logging_interface,
+      const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(10),
+      const std::chrono::milliseconds &audio_buffer_capacity = std::chrono::seconds(2),
+      const std::chrono::milliseconds &carry_over_capacity = std::chrono::milliseconds(200));
   void insert_from_stream(const std::vector<std::int16_t> &audio);
-  std::vector<float> retrieve_buffered_audio();
+  std::vector<float> retrieve_audio_batch();
+  void clear();
+
+  inline const std::uint8_t &batch_idx() const { return batch_idx_; };
 
 protected:
-  void finish_episode_();
+  bool is_new_batch_();
+  void carry_over_();
 
   rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr logging_interface_;
 
   std::mutex mutex_;
 
-  std::size_t episode_capacity_;
-  std::size_t carry_over_;
+  std::size_t batch_capacity_;
+  std::size_t carry_over_capacity_;
+  std::uint8_t batch_idx_;
 
   std::vector<float> audio_;
   RingBuffer audio_buffer_;

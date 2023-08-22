@@ -1,13 +1,13 @@
 #ifndef WHISPER_NODES__INFERENCE_NODE_HPP_
 #define WHISPER_NODES__INFERENCE_NODE_HPP_
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
 #include <string>
 
-#include "action_msgs/msg/goal_status.hpp"
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -29,7 +29,7 @@ public:
 protected:
   rclcpp::Node::SharedPtr node_ptr_;
 
-  // paramters
+  // parameters
   void declare_parameters_();
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr on_parameter_set_handle_;
   rcl_interfaces::msg::SetParametersResult
@@ -46,11 +46,13 @@ protected:
   rclcpp_action::CancelResponse
   on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
   void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  rclcpp::Time inference_start_time_;
+  std::atomic_bool running_inference_;
 
   // whisper
   void initialize_whisper_();
   ModelManager model_manager_;
-  EpisodicBuffer episodic_buffer_;
+  BatchedBuffer episodic_buffer_;
   Whisper whisper_;
   std::string language_;
 };

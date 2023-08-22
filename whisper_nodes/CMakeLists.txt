@@ -30,15 +30,15 @@ foreach(DEPENDENCY IN LISTS WHISPER_NODES_DEPENDENCIES)
 endforeach()
 
 # whisper nodes
-add_library(whisper_nodes SHARED
+add_library(${PROJECT_NAME} SHARED
   src/inference_node.cpp
 )
 
-ament_target_dependencies(whisper_nodes
+ament_target_dependencies(${PROJECT_NAME}
   ${WHISPER_NODES_DEPENDENCIES}
 )
 
-target_include_directories(whisper_nodes
+target_include_directories(${PROJECT_NAME}
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
@@ -55,7 +55,7 @@ install(
 )
 
 install(
-  TARGETS whisper_nodes
+  TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
   LIBRARY DESTINATION lib
   INCLUDES DESTINATION include
@@ -72,7 +72,7 @@ ament_target_dependencies(inference_component
 )
 
 target_link_libraries(inference_component
-  whisper_nodes
+  ${PROJECT_NAME}
 )
 
 rclcpp_components_register_node(inference_component
