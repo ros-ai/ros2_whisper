@@ -23,7 +23,6 @@ public:
   void reset();
 
   inline const std::size_t &capacity() const { return capacity_; };
-  inline const std::size_t &size() const { return size_; };
 
 protected:
   inline std::size_t increment_index_(const std::size_t &index) const {

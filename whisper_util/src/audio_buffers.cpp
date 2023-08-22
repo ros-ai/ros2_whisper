@@ -14,19 +14,18 @@ void RingBuffer::insert(const std::vector<std::int16_t> &data) {
   for (const auto &sample : data) {
     buffer_[head_] = sample;
     head_ = increment_index_(head_);
-    ++size_;
   }
 }
 
 std::vector<float> RingBuffer::retrieve() {
   std::lock_guard<std::mutex> lock(mutex_);
-  std::vector<float> data(size_);
-  std::for_each(data.begin(), data.end(), [this](float &sample) {
-    sample = static_cast<float>(buffer_[tail_]) /
-             static_cast<float>(std::numeric_limits<std::int16_t>::max());
+  std::vector<float> data;
+  // TODO: reserve memory here
+  while (tail_ != head_) {
+    data.push_back(static_cast<float>(buffer_[tail_]) /
+                   static_cast<float>(std::numeric_limits<std::int16_t>::max()));
     tail_ = increment_index_(tail_);
-  });
-  size_ = 0;
+  }
   return data;
 }
 
@@ -56,8 +55,8 @@ void BatchedBuffer::insert_from_stream(const std::vector<std::int16_t> &audio) {
 std::vector<float> BatchedBuffer::retrieve_audio_batch() {
   std::lock_guard<std::mutex> lock(mutex_);
   auto audio_new = audio_buffer_.retrieve();
-  bool new_batch = is_new_batch_();
-  if (new_batch) {
+  bool is_new_batch = is_new_batch_();
+  if (is_new_batch) {
     ++batch_idx_;
     carry_over_();
   }
@@ -65,9 +64,7 @@ std::vector<float> BatchedBuffer::retrieve_audio_batch() {
   return audio_;
 }
 
-bool BatchedBuffer::is_new_batch_() {
-  return audio_.size() + audio_buffer_.size() > batch_capacity_;
-}
+bool BatchedBuffer::is_new_batch_() { return audio_.size() > batch_capacity_; }
 
 void BatchedBuffer::carry_over_() {
   std::vector<float> carry_over(audio_.end() - carry_over_capacity_, audio_.end());
@@ -77,7 +74,6 @@ void BatchedBuffer::carry_over_() {
 
 void BatchedBuffer::clear() {
   std::lock_guard<std::mutex> lock(mutex_);
-  batch_idx_ = 0;
   audio_.clear();
   audio_buffer_.reset();
 }
