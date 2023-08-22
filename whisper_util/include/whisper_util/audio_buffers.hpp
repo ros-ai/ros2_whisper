@@ -7,6 +7,8 @@
 #include <mutex>
 #include <vector>
 
+#include "rclcpp/rclcpp.hpp"
+
 #include "whisper.h"
 
 namespace whisper {
@@ -38,16 +40,17 @@ protected:
 
 class EpisodicBuffer {
 public:
-  EpisodicBuffer(const std::chrono::milliseconds &episode_capacity = std::chrono::seconds(10),
+  EpisodicBuffer(const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr &logging_interface,
+                 const std::chrono::milliseconds &episode_capacity = std::chrono::seconds(10),
                  const std::chrono::milliseconds &audio_buffer_capacity = std::chrono::seconds(2),
                  const std::chrono::milliseconds &carry_over = std::chrono::milliseconds(200));
-  void insert(const std::vector<std::int16_t> &audio);
-  void append_audio_from_new();
-
-  inline std::vector<float> get_audio() const { return audio_; }
+  void insert_from_stream(const std::vector<std::int16_t> &audio);
+  std::vector<float> retrieve_buffered_audio();
 
 protected:
-  void clear_audio_();
+  void finish_episode_();
+
+  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr logging_interface_;
 
   std::mutex mutex_;
 

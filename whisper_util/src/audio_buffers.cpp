@@ -37,43 +37,40 @@ void RingBuffer::reset() {
   size_ = 0;
 }
 
-EpisodicBuffer::EpisodicBuffer(const std::chrono::milliseconds &episode_capacity,
-                               const std::chrono::milliseconds &audio_buffer_capacity,
-                               const std::chrono::milliseconds &carry_over)
-    : episode_capacity_(time_to_sample_count(episode_capacity)),
+EpisodicBuffer::EpisodicBuffer(
+    const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr &logging_interface,
+    const std::chrono::milliseconds &episode_capacity,
+    const std::chrono::milliseconds &audio_buffer_capacity,
+    const std::chrono::milliseconds &carry_over)
+    : logging_interface_(logging_interface),
+      episode_capacity_(time_to_sample_count(episode_capacity)),
       carry_over_(time_to_sample_count(carry_over)),
       audio_buffer_(time_to_sample_count(audio_buffer_capacity)){
 
       };
 
-void EpisodicBuffer::insert(const std::vector<std::int16_t> &audio) {
+void EpisodicBuffer::insert_from_stream(const std::vector<std::int16_t> &audio) {
   std::lock_guard<std::mutex> lock(mutex_);
   audio_buffer_.insert(audio);
 }
 
-void EpisodicBuffer::append_audio_from_new() {
+std::vector<float> EpisodicBuffer::retrieve_buffered_audio() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (audio_buffer_.size() == 0) {
-    // warn
-  }
-
-  if (audio_buffer_.size() > audio_buffer_.capacity()) {
-    // warn
+    RCLCPP_WARN(logging_interface_->get_logger(), "No audio in buffer.");
+    return;
   }
 
   if (audio_.size() + audio_buffer_.size() > episode_capacity_) {
-    // not clear how this should work. How to keep track of what data has been inferenced on?
-    std::cout << "clearing audio buffer: "
-              << " " << audio_.size() << " + " << audio_buffer_.size() << " < " << episode_capacity_
-              << std::endl;
-    clear_audio_();
+    finish_episode_();
   }
 
   auto audio_new = audio_buffer_.retrieve();
   audio_.insert(audio_.end(), audio_new.begin(), audio_new.end());
+  return audio_;
 }
 
-void EpisodicBuffer::clear_audio_() {
+void EpisodicBuffer::finish_episode_() {
   // carry over old data
   std::vector<float> carry_over(audio_.end() - carry_over_, audio_.end());
   audio_.clear();
