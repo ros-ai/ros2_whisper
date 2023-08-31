@@ -127,6 +127,7 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
   running_inference_ = false;
 
   goal_handle->succeed(result);
+  batched_buffer_.clear();
 }
 
 std::string InferenceNode::inference_(const std::vector<float> &audio) {
