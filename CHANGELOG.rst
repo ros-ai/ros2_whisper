@@ -1,7 +1,7 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-1.0.0 (2023-08-22)
+1.0.0 (2023-08-31)
 ------------------
 * Initial release
 * Uses whisper.cpp https://github.com/ggerganov/whisper.cpp instead of OpenAI Whisper Python library
