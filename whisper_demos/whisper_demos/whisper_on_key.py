@@ -5,6 +5,7 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.task import Future
 from whisper_msgs.action import Inference
+from whisper_msgs.action._inference import Inference_FeedbackMessage
 
 
 class WhisperOnKey(Node):
@@ -13,7 +14,6 @@ class WhisperOnKey(Node):
 
         # whisper
         self.whisper_client = ActionClient(self, Inference, "/whisper/inference")
-        self.feedback = Inference.Feedback()
 
         while not self.whisper_client.wait_for_server(1):
             self.get_logger().warn(
@@ -28,7 +28,7 @@ class WhisperOnKey(Node):
 
         self.get_logger().info(self.info_string())
 
-    def on_key(self, key) -> None:
+    def on_key(self, key: Key) -> None:
         if key == Key.esc:
             self.key_listener.stop()
             rclpy.shutdown()
@@ -65,13 +65,8 @@ class WhisperOnKey(Node):
         result: Inference.Result = future.result().result
         self.get_logger().info(f"Result: {result.text}")
 
-    def on_feedback(self, feedback_msg) -> None:
-        prefix = ""
-        if feedback_msg.feedback.batch_idx != self.feedback.batch_idx:
-            prefix = "\n"
-        self.feedback = feedback_msg.feedback
-        # print(f"{prefix}{self.feedback.text}", end="\r")
-        self.get_logger().info(f"{self.feedback.text}")
+    def on_feedback(self, feedback_msg: Inference_FeedbackMessage) -> None:
+        self.get_logger().info(f"{feedback_msg.feedback.text}")
 
     def info_string(self) -> str:
         return (

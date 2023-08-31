@@ -113,13 +113,6 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
 
   while (rclcpp::ok() &&
          node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
-    // if (goal_handle->get_goal()->max_duration.sec != 0 && // run until goal is canceled
-    //     goal_handle->get_goal()->max_duration.nanosec != 0 &&
-    //     node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
-    //   RCLCPP_INFO(node_ptr_->get_logger(), "Exiting inference on time limit.");
-    //   break;
-    // }
-
     // run inference
     auto text = inference_(batched_buffer_.dequeue());
 
@@ -128,13 +121,10 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
       result->text.push_back(feedback->text);
     }
     feedback->text = text;
+    feedback->batch_idx = batched_buffer_.batch_idx();
     goal_handle->publish_feedback(feedback);
   }
   running_inference_ = false;
-
-  // goal_handle->canceled
-  // goal_handle->is_canceling
-  // goal_handle->publish_feedback
 
   goal_handle->succeed(result);
 }
