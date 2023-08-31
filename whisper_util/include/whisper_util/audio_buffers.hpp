@@ -9,11 +9,11 @@
 #include "whisper.h"
 
 namespace whisper {
-inline std::size_t time_to_sample_count(const std::chrono::milliseconds &ms) {
+inline std::size_t time_to_count(const std::chrono::milliseconds &ms) {
   return ms.count() * WHISPER_SAMPLE_RATE / 1e3;
 };
 
-inline std::chrono::milliseconds sample_count_to_time(const std::size_t &count) {
+inline std::chrono::milliseconds count_to_time(const std::size_t &count) {
   return std::chrono::milliseconds(count * static_cast<std::size_t>(1e3) / WHISPER_SAMPLE_RATE);
 };
 
@@ -70,6 +70,7 @@ public:
   std::vector<float> dequeue();
   void clear();
 
+  inline const std::size_t &buffer_size() const { return audio_buffer_.size(); };
   inline const std::uint16_t &batch_idx() const { return batch_idx_; };
 
 protected:

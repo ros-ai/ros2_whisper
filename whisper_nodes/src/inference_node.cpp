@@ -99,7 +99,7 @@ InferenceNode::on_inference_(const rclcpp_action::GoalUUID &uuid,
 
 rclcpp_action::CancelResponse
 InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Canceling inference...");
+  RCLCPP_INFO(node_ptr_->get_logger(), "Cancelling inference...");
   return rclcpp_action::CancelResponse::ACCEPT;
 }
 
@@ -109,18 +109,21 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
   auto result = std::make_shared<Inference::Result>();
   auto feedback = std::make_shared<Inference::Feedback>();
 
-  inference_start_time_ = node_ptr_->now();
+  auto loop_start_time = node_ptr_->now();
 
   while (rclcpp::ok() &&
-         node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration) {
+         node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
     // if (goal_handle->get_goal()->max_duration.sec != 0 && // run until goal is canceled
     //     goal_handle->get_goal()->max_duration.nanosec != 0 &&
-    //     node_ptr_->now() - inference_start_time_ < goal_handle->get_goal()->max_duration) {
+    //     node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
     //   RCLCPP_INFO(node_ptr_->get_logger(), "Exiting inference on time limit.");
     //   break;
     // }
-    RCLCPP_INFO(node_ptr_->get_logger(), "Running inference step...");
-    auto text = whisper_.forward(batched_buffer_.dequeue());
+
+    // run inference
+    auto text = inference_(batched_buffer_.dequeue());
+
+    // feedback data results
     if (feedback->batch_idx != batched_buffer_.batch_idx()) {
       result->text.push_back(feedback->text);
     }
@@ -134,5 +137,18 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
   // goal_handle->publish_feedback
 
   goal_handle->succeed(result);
+}
+
+std::string InferenceNode::inference_(const std::vector<float> &audio) {
+  auto inference_start_time = node_ptr_->now();
+  auto text = whisper_.forward(audio);
+  auto inference_duration =
+      (node_ptr_->now() - inference_start_time).to_chrono<std::chrono::milliseconds>();
+  if (inference_duration > whisper::count_to_time(audio.size())) {
+    RCLCPP_WARN(node_ptr_->get_logger(),
+                "Inference took longer than audio buffer size. This leads to un-inferenced audio "
+                "data. Consider increasing thread number or compile with accelerator support.");
+  }
+  return text;
 }
 } // end of namespace whisper

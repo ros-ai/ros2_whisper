@@ -46,6 +46,7 @@ protected:
   rclcpp_action::CancelResponse
   on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
   void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  std::string inference_(const std::vector<float> &audio);
   rclcpp::Time inference_start_time_;
   std::atomic_bool running_inference_;
 
