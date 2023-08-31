@@ -69,6 +69,10 @@ protected:
     return ms.count() * WHISPER_SAMPLE_RATE / 1e3;
   };
 
+  inline std::chrono::milliseconds sample_count_to_time_(const std::size_t &count) {
+    return std::chrono::milliseconds(count * static_cast<std::size_t>(1e3) / WHISPER_SAMPLE_RATE);
+  };
+
   bool require_new_batch_();
   void carry_over_();
 

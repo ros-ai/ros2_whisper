@@ -2,5 +2,5 @@ whisper:
   ros__parameters:
     model_name: "base.en" # other models https://huggingface.co/ggerganov/whisper.cpp
     language: "en"
-    n_threads: 1
+    n_threads: 4
     print_progress: false

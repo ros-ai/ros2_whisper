@@ -31,7 +31,7 @@ class InferenceMixin:
     def arg_n_threads() -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
             name="n_threads",
-            default_value="1",
+            default_value="4",
             description="Number of threads for whisper.cpp.",
         )
 
@@ -50,7 +50,7 @@ class InferenceMixin:
 
     @staticmethod
     def param_n_threads() -> Dict[str, LaunchConfiguration]:
-        return {"n_threads": LaunchConfiguration("n_threads", default="1")}
+        return {"n_threads": LaunchConfiguration("n_threads", default="4")}
 
     @staticmethod
     def param_language() -> Dict[str, LaunchConfiguration]:
@@ -76,7 +76,7 @@ class WhisperNodesMixin(InferenceMixin):
             name="whisper_container",
             package="rclcpp_components",
             namespace="",
-            executable="component_container_mt", # TODO: add node why this is important
+            executable="component_container_mt",  # TODO: add note why this is important
             output="screen",
             composable_node_descriptions=composable_node_descriptions,
         )
