@@ -59,7 +59,7 @@ class InferenceMixin:
     @staticmethod
     def composable_node_inference(**kwargs) -> ComposableNode:
         return ComposableNode(
-            package="whisper_nodes",
+            package="whisper_server",
             plugin="whisper::InferenceComponent",
             name="inference",
             extra_arguments=[{"use_intra_process_comms": True}],
@@ -67,7 +67,7 @@ class InferenceMixin:
         )
 
 
-class WhisperNodesMixin(InferenceMixin):
+class WhisperServerMixin(InferenceMixin):
     @staticmethod
     def composable_node_container(
         composable_node_descriptions: List[ComposableNode],

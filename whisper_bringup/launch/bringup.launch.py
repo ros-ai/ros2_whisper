@@ -1,6 +1,6 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from whisper_nodes_launch_mixin import WhisperNodesMixin
+from whisper_server_launch_mixin import WhisperServerMixin
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -16,17 +16,17 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # launch whisper
-    ld.add_action(WhisperNodesMixin.arg_model_name())
-    ld.add_action(WhisperNodesMixin.arg_n_threads())
-    ld.add_action(WhisperNodesMixin.arg_language())
+    ld.add_action(WhisperServerMixin.arg_model_name())
+    ld.add_action(WhisperServerMixin.arg_n_threads())
+    ld.add_action(WhisperServerMixin.arg_language())
     ld.add_action(
-        WhisperNodesMixin.composable_node_container(
+        WhisperServerMixin.composable_node_container(
             composable_node_descriptions=[
-                WhisperNodesMixin.composable_node_inference(
+                WhisperServerMixin.composable_node_inference(
                     parameters=[
-                        WhisperNodesMixin.param_model_name(),
-                        WhisperNodesMixin.param_n_threads(),
-                        WhisperNodesMixin.param_language(),
+                        WhisperServerMixin.param_model_name(),
+                        WhisperServerMixin.param_n_threads(),
+                        WhisperServerMixin.param_language(),
                     ],
                     remappings=[("/whisper/audio", "/audio_listener/audio")],
                     namespace="whisper",

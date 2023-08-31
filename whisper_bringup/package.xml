@@ -12,7 +12,7 @@
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>whisper_cpp_vendor</exec_depend>
   <exec_depend>whisper_msgs</exec_depend>
-  <exec_depend>whisper_nodes</exec_depend>
+  <exec_depend>whisper_server</exec_depend>
   <exec_depend>whisper_util</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>

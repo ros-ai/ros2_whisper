@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 
-#include "whisper_nodes/inference_node.hpp"
+#include "whisper_server/inference_node.hpp"
 
 namespace whisper {
 class InferenceComponent {

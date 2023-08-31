@@ -1,4 +1,4 @@
-#include "whisper_nodes/inference_node.hpp"
+#include "whisper_server/inference_node.hpp"
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
