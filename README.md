@@ -1,28 +1,25 @@
 # ROS 2 Whisper
-Repository showcases inference of the [OpenAI Whisper](https://github.com/openai/whisper) within a ROS 2 node.
+ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
-## Preparation
-### Dependencies
-This repository requires `pyaudio` and `whisper`. Install via respective install instructions
-- `pyaudio` [install instructions](https://pypi.org/project/PyAudio/)
-- `whisper` [install instructions](https://github.com/openai/whisper#setup)
-### Build
-To build, do
-
+## Build
+- Install `pyaudio`, see [install instructions](https://pypi.org/project/PyAudio/).
+- Build this repository, do
 ```shell
-mkdir -p ros2_whisper_ws/src && cd ros2_whisper_ws/src && \
-git clone https://github.com/mhubii/ros2_whisper.git && cd .. && \
-colcon build --symlink-install
+mkdir -p whisper_ws/src && cd whisper_ws/src && \
+git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
+colcon build --symlink-install --cmake-args -DWHISPER_CUBLAS=On
 ```
 
-## Run
-To run, do
+## Demos
+Run the inference nodes (this will download models to `$HOME/.cache/whisper.cpp`):
 ```shell
-source install/setup.bash && \
-ros2 launch ros2_whisper ros2_whisper.launch.py
+ros2 launch whisper_bringup bringup.launch.py n_thread:=8
+```
+Run a client node (activated on space bar press):
+```shell
+ros2 run whisper_demos whisper_on_key
 ```
 
-To print the inferenced text, do
-```shell
-ros2 topic echo /whisper_inference_node/text
-```
+## Troubleshoot
+- Encoder inference time: https://github.com/ggerganov/whisper.cpp/issues/10#issuecomment-1302462960
+- Compile with GPU support (might differ between platforms): https://github.com/ggerganov/whisper.cpp#nvidia-gpu-support-via-cublas WHISPER_CUBLAS=On
