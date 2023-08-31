@@ -48,12 +48,14 @@ protected:
  * Thread A: enqueue into audio_buffer_ (ring buffer)
  * Thread B: dequeue from audio_buffer_ and store into audio_ up to batch_capacity_
  *
+ * The buffer should be dequeued quicker than buffer_capacity_ to avoid loss of data.
+ *
  */
 class BatchedBuffer {
 public:
   BatchedBuffer(
-      const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(5),
-      const std::chrono::milliseconds &audio_buffer_capacity = std::chrono::seconds(2),
+      const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(10),
+      const std::chrono::milliseconds &buffer_capacity = std::chrono::seconds(2),
       const std::chrono::milliseconds &carry_over_capacity = std::chrono::milliseconds(200));
 
   void enqueue(const std::vector<std::int16_t> &audio);
