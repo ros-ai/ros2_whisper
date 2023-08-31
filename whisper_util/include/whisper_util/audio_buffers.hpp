@@ -1,13 +1,10 @@
 #ifndef WHISPER_UTIL__AUDIO_BUFFERS_HPP_
 #define WHISPER_UTIL__AUDIO_BUFFERS_HPP_
 
-#include <algorithm>
 #include <chrono>
 #include <limits>
 #include <mutex>
 #include <vector>
-
-#include "rclcpp/rclcpp.hpp"
 
 #include "whisper.h"
 
@@ -55,7 +52,6 @@ protected:
 class BatchedBuffer {
 public:
   BatchedBuffer(
-      const rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr &logging_interface,
       const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(5),
       const std::chrono::milliseconds &audio_buffer_capacity = std::chrono::seconds(2),
       const std::chrono::milliseconds &carry_over_capacity = std::chrono::milliseconds(200));
@@ -73,8 +69,6 @@ protected:
 
   bool is_new_batch_();
   void carry_over_();
-
-  rclcpp::node_interfaces::NodeLoggingInterface::SharedPtr logging_interface_;
 
   std::mutex mutex_;
 
