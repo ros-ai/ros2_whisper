@@ -9,6 +9,14 @@
 #include "whisper.h"
 
 namespace whisper {
+inline std::size_t time_to_sample_count(const std::chrono::milliseconds &ms) {
+  return ms.count() * WHISPER_SAMPLE_RATE / 1e3;
+};
+
+inline std::chrono::milliseconds sample_count_to_time(const std::size_t &count) {
+  return std::chrono::milliseconds(count * static_cast<std::size_t>(1e3) / WHISPER_SAMPLE_RATE);
+};
+
 /**
  * @brief A ring buffer implementation. This buffer is **not** thread-safe. It is the user's
  * responsibility to ensure thread-safety.
@@ -65,14 +73,6 @@ public:
   inline const std::uint16_t &batch_idx() const { return batch_idx_; };
 
 protected:
-  inline std::size_t time_to_sample_count_(const std::chrono::milliseconds &ms) {
-    return ms.count() * WHISPER_SAMPLE_RATE / 1e3;
-  };
-
-  inline std::chrono::milliseconds sample_count_to_time_(const std::size_t &count) {
-    return std::chrono::milliseconds(count * static_cast<std::size_t>(1e3) / WHISPER_SAMPLE_RATE);
-  };
-
   bool require_new_batch_();
   void carry_over_();
 

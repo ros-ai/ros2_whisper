@@ -44,9 +44,9 @@ template <typename value_type> void RingBuffer<value_type>::increment_tail_() {
 BatchedBuffer::BatchedBuffer(const std::chrono::milliseconds &batch_capacity,
                              const std::chrono::milliseconds &buffer_capacity,
                              const std::chrono::milliseconds &carry_over_capacity)
-    : batch_capacity_(time_to_sample_count_(batch_capacity)),
-      carry_over_capacity_(time_to_sample_count_(carry_over_capacity)), batch_idx_(0),
-      audio_buffer_(time_to_sample_count_(buffer_capacity)){
+    : batch_capacity_(time_to_sample_count(batch_capacity)),
+      carry_over_capacity_(time_to_sample_count(carry_over_capacity)), batch_idx_(0),
+      audio_buffer_(time_to_sample_count(buffer_capacity)){
 
       };
 
