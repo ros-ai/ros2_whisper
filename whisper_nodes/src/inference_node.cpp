@@ -82,7 +82,7 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
 }
 
 void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
-  batched_buffer_.insert_from_stream(msg->data);
+  batched_buffer_.enqueue(msg->data);
 }
 
 rclcpp_action::GoalResponse
@@ -120,7 +120,7 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
     //   break;
     // }
     RCLCPP_INFO(node_ptr_->get_logger(), "Running inference step...");
-    feedback->text = whisper_.forward(batched_buffer_.retrieve_audio_batch());
+    feedback->text = whisper_.forward(batched_buffer_.dequeue());
     feedback->batch_idx = batched_buffer_.batch_idx();
     goal_handle->publish_feedback(feedback);
   }
