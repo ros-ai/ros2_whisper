@@ -59,8 +59,8 @@ void BatchedBuffer::enqueue(const std::vector<std::int16_t> &audio) {
 
 std::vector<float> BatchedBuffer::dequeue() {
   std::lock_guard<std::mutex> lock(mutex_);
-  bool is_new_batch = is_new_batch_();
-  if (is_new_batch) {
+  bool new_batch = require_new_batch_();
+  if (new_batch) {
     ++batch_idx_;
     carry_over_();
   }
@@ -72,7 +72,7 @@ std::vector<float> BatchedBuffer::dequeue() {
   return audio_;
 }
 
-bool BatchedBuffer::is_new_batch_() {
+bool BatchedBuffer::require_new_batch_() {
   return (audio_.size() + audio_buffer_.size()) > batch_capacity_;
 }
 

@@ -43,7 +43,7 @@ protected:
 /**
  * @brief A thread-safe buffer for storing audio data. The user enqueues data from an audio stream
  * in thread A and dequeues data in thread B. When the maximum batch capacity is reached, the audio
- * data is cleared.
+ * data is cleared, but a carry-over buffer is kept to mitigate line-breaks.
  *
  * Thread A: enqueue into audio_buffer_ (ring buffer)
  * Thread B: dequeue from audio_buffer_ and store into audio_ up to batch_capacity_
@@ -69,7 +69,7 @@ protected:
     return ms.count() * WHISPER_SAMPLE_RATE / 1e3;
   };
 
-  bool is_new_batch_();
+  bool require_new_batch_();
   void carry_over_();
 
   std::mutex mutex_;

@@ -2,8 +2,7 @@
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), running_inference_(false),
-      batched_buffer_(node_ptr_->get_node_logging_interface()), language_("en") {
+    : node_ptr_(node_ptr), running_inference_(false), language_("en") {
   declare_parameters_();
 
   auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -34,13 +33,14 @@ void InferenceNode::declare_parameters_() {
   // consider other parameters:
   // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
   node_ptr_->declare_parameter("language", "en");
-  node_ptr_->declare_parameter("n_threads", 1);
+  node_ptr_->declare_parameter("n_threads", 4);
   node_ptr_->declare_parameter("print_progress", false);
 }
 
 void InferenceNode::initialize_whisper_() {
   std::string model_name = node_ptr_->get_parameter("model_name").as_string();
-  RCLCPP_INFO(node_ptr_->get_logger(), "Checking if model %s is available...", model_name.c_str());
+  RCLCPP_INFO(node_ptr_->get_logger(), "Checking whether model %s is available...",
+              model_name.c_str());
   if (!model_manager_.is_available(model_name)) {
     RCLCPP_INFO(node_ptr_->get_logger(), "Model %s is not available. Attempting download...",
                 model_name.c_str());
@@ -120,17 +120,19 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
     //   break;
     // }
     RCLCPP_INFO(node_ptr_->get_logger(), "Running inference step...");
-    feedback->text = whisper_.forward(batched_buffer_.dequeue());
-    feedback->batch_idx = batched_buffer_.batch_idx();
+    auto text = whisper_.forward(batched_buffer_.dequeue());
+    if (feedback->batch_idx != batched_buffer_.batch_idx()) {
+      result->text.push_back(feedback->text);
+    }
+    feedback->text = text;
     goal_handle->publish_feedback(feedback);
   }
-  // result->text = text;
+  running_inference_ = false;
 
   // goal_handle->canceled
   // goal_handle->is_canceling
   // goal_handle->publish_feedback
 
   goal_handle->succeed(result);
-  running_inference_ = false;
 }
 } // end of namespace whisper
