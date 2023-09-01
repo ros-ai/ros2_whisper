@@ -1,6 +1,10 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1.1.0 (2023-09-01)
+* `whisper_demos`: Improved terminal output
+* `whisper_server`: Improved state machine
+
 1.0.0 (2023-08-31)
 ------------------
 * Initial release
