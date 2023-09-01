@@ -45,7 +45,7 @@ class WhisperOnKey(Node):
 
     def on_space(self) -> None:
         goal_msg = Inference.Goal()
-        goal_msg.max_duration = Duration(sec=10, nanosec=0)
+        goal_msg.max_duration = Duration(sec=20, nanosec=0)
         self.get_logger().info(
             f"Requesting inference for {goal_msg.max_duration.sec} seconds..."
         )
