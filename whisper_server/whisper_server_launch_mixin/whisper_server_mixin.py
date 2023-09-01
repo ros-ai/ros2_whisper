@@ -11,12 +11,12 @@ class InferenceMixin:
     def arg_model_name() -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
             name="model_name",
-            default_value="base.en",
+            default_value="tiny.en",
             description="Model name for whisper.cpp. Refer to https://huggingface.co/ggerganov/whisper.cpp.",
             choices=[
                 "tiny.en",
                 "tiny",
-                "base.en",
+                "tiny.en",
                 "base",
                 "small.en",
                 "small",
@@ -45,8 +45,32 @@ class InferenceMixin:
         )
 
     @staticmethod
+    def arg_batch_capacity() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            name="batch_capacity",
+            default_value="6",
+            description="Batch capacity in seconds.",
+        )
+
+    @staticmethod
+    def arg_buffer_capacity() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            name="buffer_capacity",
+            default_value="2",
+            description="Buffer capacity in seconds.",
+        )
+
+    @staticmethod
+    def arg_carry_over_capacity() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            name="carry_over_capacity",
+            default_value="200",
+            description="Carry over capacity in milliseconds.",
+        )
+
+    @staticmethod
     def param_model_name() -> Dict[str, LaunchConfiguration]:
-        return {"model_name": LaunchConfiguration("model_name", default="base.en")}
+        return {"model_name": LaunchConfiguration("model_name", default="tiny.en")}
 
     @staticmethod
     def param_n_threads() -> Dict[str, LaunchConfiguration]:
@@ -55,6 +79,22 @@ class InferenceMixin:
     @staticmethod
     def param_language() -> Dict[str, LaunchConfiguration]:
         return {"language": LaunchConfiguration("language", default="en")}
+
+    @staticmethod
+    def param_batch_capacity() -> Dict[str, LaunchConfiguration]:
+        return {"batch_capacity": LaunchConfiguration("batch_capacity", default="6")}
+
+    @staticmethod
+    def param_buffer_capacity() -> Dict[str, LaunchConfiguration]:
+        return {"buffer_capacity": LaunchConfiguration("buffer_capacity", default="2")}
+
+    @staticmethod
+    def param_carry_over_capacity() -> Dict[str, LaunchConfiguration]:
+        return {
+            "carry_over_capacity": LaunchConfiguration(
+                "carry_over_capacity", default="200"
+            )
+        }
 
     @staticmethod
     def composable_node_inference(**kwargs) -> ComposableNode:

@@ -62,7 +62,7 @@ protected:
 class BatchedBuffer {
 public:
   BatchedBuffer(
-      const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(10),
+      const std::chrono::milliseconds &batch_capacity = std::chrono::seconds(6),
       const std::chrono::milliseconds &buffer_capacity = std::chrono::seconds(2),
       const std::chrono::milliseconds &carry_over_capacity = std::chrono::milliseconds(200));
 

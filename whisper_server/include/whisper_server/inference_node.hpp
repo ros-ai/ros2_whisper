@@ -51,11 +51,11 @@ protected:
   std::atomic_bool running_inference_;
 
   // whisper
-  void initialize_whisper_();
-  ModelManager model_manager_;
-  BatchedBuffer batched_buffer_;
-  Whisper whisper_;
+  std::unique_ptr<ModelManager> model_manager_;
+  std::unique_ptr<BatchedBuffer> batched_buffer_;
+  std::unique_ptr<Whisper> whisper_;
   std::string language_;
+  void initialize_whisper_();
 };
 } // end of namespace whisper
 #endif // WHISPER_NODES__INFERENCE_NODE_HPP_
