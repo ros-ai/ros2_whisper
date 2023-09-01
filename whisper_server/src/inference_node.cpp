@@ -127,13 +127,13 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
   while (rclcpp::ok() &&
          node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
     // run inference
-    auto text = inference_(batched_buffer_->dequeue());
+    auto transcription = inference_(batched_buffer_->dequeue());
 
     // feedback data results
     if (feedback->batch_idx != batched_buffer_->batch_idx()) {
-      result->text.push_back(feedback->text);
+      result->transcriptions.push_back(feedback->transcription);
     }
-    feedback->text = text;
+    feedback->transcription = transcription;
     feedback->batch_idx = batched_buffer_->batch_idx();
     goal_handle->publish_feedback(feedback);
   }
@@ -145,7 +145,7 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
 
 std::string InferenceNode::inference_(const std::vector<float> &audio) {
   auto inference_start_time = node_ptr_->now();
-  auto text = whisper_->forward(audio);
+  auto transcription = whisper_->forward(audio);
   auto inference_duration =
       (node_ptr_->now() - inference_start_time).to_chrono<std::chrono::milliseconds>();
   if (inference_duration > whisper::count_to_time(audio.size())) {
@@ -153,6 +153,6 @@ std::string InferenceNode::inference_(const std::vector<float> &audio) {
                 "Inference took longer than audio buffer size. This leads to un-inferenced audio "
                 "data. Consider increasing thread number or compile with accelerator support.");
   }
-  return text;
+  return transcription;
 }
 } // end of namespace whisper
