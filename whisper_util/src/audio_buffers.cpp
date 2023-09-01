@@ -84,6 +84,7 @@ void BatchedBuffer::carry_over_() {
 
 void BatchedBuffer::clear() {
   std::lock_guard<std::mutex> lock(mutex_);
+  batch_idx_ = 0;
   audio_.clear();
   audio_buffer_.clear();
 }

@@ -1,7 +1,7 @@
 builtin_interfaces/Duration max_duration
 ---
 string info
-string[] text
+string[] transcriptions
 ---
 uint16 batch_idx
-string text
+string transcription

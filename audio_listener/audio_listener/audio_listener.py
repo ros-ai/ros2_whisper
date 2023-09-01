@@ -4,7 +4,6 @@ import numpy as np
 import pyaudio
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_system_default
 from std_msgs.msg import Int16MultiArray, MultiArrayDimension
 
 
@@ -16,7 +15,7 @@ class AudioListenerNode(Node):
             namespace="",
             parameters=[
                 ("channels", 1),
-                ("frames_per_buffer", 1024),
+                ("frames_per_buffer", 1000),
                 ("rate", 16000),
             ],
         )
@@ -39,7 +38,7 @@ class AudioListenerNode(Node):
         )
 
         self.audio_publisher_ = self.create_publisher(
-            Int16MultiArray, "~/audio", qos_profile_system_default
+            Int16MultiArray, "~/audio", 5
         )
 
         self.audio_publisher_timer_ = self.create_timer(
