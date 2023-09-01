@@ -2,7 +2,7 @@
 
 namespace whisper {
 InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), running_inference_(false), language_("en") {
+    : node_ptr_(node_ptr), language_("en") {
   declare_parameters_();
 
   auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -99,48 +99,63 @@ void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr ms
 }
 
 rclcpp_action::GoalResponse
-InferenceNode::on_inference_(const rclcpp_action::GoalUUID &uuid,
-                             std::shared_ptr<const Inference::Goal> goal) {
+InferenceNode::on_inference_(const rclcpp_action::GoalUUID & /*uuid*/,
+                             std::shared_ptr<const Inference::Goal> /*goal*/) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Received inference request.");
-  if (running_inference_) {
-    RCLCPP_WARN(node_ptr_->get_logger(), "Inference already running.");
-    return rclcpp_action::GoalResponse::REJECT;
-  }
-
   return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
 rclcpp_action::CancelResponse
-InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle) {
+InferenceNode::on_cancel_inference_(const std::shared_ptr<GoalHandleInference> /*goal_handle*/) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Cancelling inference...");
   return rclcpp_action::CancelResponse::ACCEPT;
 }
 
 void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Starting inference...");
-  running_inference_ = true;
-  auto result = std::make_shared<Inference::Result>();
   auto feedback = std::make_shared<Inference::Feedback>();
+  auto result = std::make_shared<Inference::Result>();
+  inference_start_time_ = node_ptr_->now();
 
-  auto loop_start_time = node_ptr_->now();
+  while (rclcpp::ok()) {
+    if (node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration) {
+      result->info = "Inference timed out.";
+      RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+      goal_handle->succeed(result);
+      batched_buffer_->clear();
+      return;
+    }
 
-  while (rclcpp::ok() &&
-         node_ptr_->now() - loop_start_time < goal_handle->get_goal()->max_duration) {
+    if (goal_handle->is_canceling()) {
+      result->info = "Inference cancelled.";
+      RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+      goal_handle->canceled(result);
+      batched_buffer_->clear();
+      return;
+    }
+
     // run inference
     auto transcription = inference_(batched_buffer_->dequeue());
 
-    // feedback data results
-    if (feedback->batch_idx != batched_buffer_->batch_idx()) {
-      result->transcriptions.push_back(feedback->transcription);
-    }
+    // feedback to client
     feedback->transcription = transcription;
     feedback->batch_idx = batched_buffer_->batch_idx();
     goal_handle->publish_feedback(feedback);
-  }
-  running_inference_ = false;
 
-  goal_handle->succeed(result);
-  batched_buffer_->clear();
+    // update inference result
+    if (result->transcriptions.size() == batched_buffer_->batch_idx() + 1) {
+      result->transcriptions[result->transcriptions.size() - 1] = feedback->transcription;
+    } else {
+      result->transcriptions.push_back(feedback->transcription);
+    }
+  }
+
+  if (rclcpp::ok()) {
+    result->info = "Inference succeeded.";
+    RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+    goal_handle->succeed(result);
+    batched_buffer_->clear();
+  }
 }
 
 std::string InferenceNode::inference_(const std::vector<float> &audio) {

@@ -1,7 +1,6 @@
 #ifndef WHISPER_NODES__INFERENCE_NODE_HPP_
 #define WHISPER_NODES__INFERENCE_NODE_HPP_
 
-#include <atomic>
 #include <chrono>
 #include <memory>
 #include <numeric>
@@ -48,7 +47,6 @@ protected:
   void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
   std::string inference_(const std::vector<float> &audio);
   rclcpp::Time inference_start_time_;
-  std::atomic_bool running_inference_;
 
   // whisper
   std::unique_ptr<ModelManager> model_manager_;

@@ -1,11 +1,14 @@
+import sys
+
 import rclpy
 from builtin_interfaces.msg import Duration
 from pynput.keyboard import Key, Listener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.task import Future
-from whisper_msgs.action import Inference
 from whisper_msgs.action._inference import Inference_FeedbackMessage
+
+from whisper_msgs.action import Inference
 
 
 class WhisperOnKey(Node):
@@ -13,6 +16,7 @@ class WhisperOnKey(Node):
         super().__init__(node_name=node_name)
 
         # whisper
+        self.batch_idx = -1
         self.whisper_client = ActionClient(self, Inference, "/whisper/inference")
 
         while not self.whisper_client.wait_for_server(1):
@@ -41,7 +45,7 @@ class WhisperOnKey(Node):
 
     def on_space(self) -> None:
         goal_msg = Inference.Goal()
-        goal_msg.max_duration = Duration(sec=20, nanosec=0)
+        goal_msg.max_duration = Duration(sec=10, nanosec=0)
         self.get_logger().info(
             f"Requesting inference for {goal_msg.max_duration.sec} seconds..."
         )
@@ -63,10 +67,15 @@ class WhisperOnKey(Node):
 
     def on_done(self, future: Future) -> None:
         result: Inference.Result = future.result().result
-        self.get_logger().info(f"Result: {result.text}")
+        self.get_logger().info(f"Result: {result.transcriptions}")
 
     def on_feedback(self, feedback_msg: Inference_FeedbackMessage) -> None:
-        self.get_logger().info(f"{feedback_msg.feedback.text}")
+        if self.batch_idx != feedback_msg.feedback.batch_idx:
+            print("")
+            self.batch_idx = feedback_msg.feedback.batch_idx
+        sys.stdout.write("\033[K")
+        print(f"{feedback_msg.feedback.transcription}")
+        sys.stdout.write("\033[F")
 
     def info_string(self) -> str:
         return (
