@@ -11,7 +11,7 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
 
   // audio subscription
   audio_sub_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
-      "audio", 10, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1), options);
+      "audio", 5, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1), options);
 
   // inference action server
   inference_action_server_ = rclcpp_action::create_server<Inference>(
