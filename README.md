@@ -13,7 +13,7 @@ colcon build --symlink-install --cmake-args -DWHISPER_CUBLAS=On
 ## Demos
 Run the inference nodes (this will download models to `$HOME/.cache/whisper.cpp`):
 ```shell
-ros2 launch whisper_bringup bringup.launch.py n_thread:=8
+ros2 launch whisper_bringup bringup.launch.py n_thread:=4
 ```
 Run a client node (activated on space bar press):
 ```shell
