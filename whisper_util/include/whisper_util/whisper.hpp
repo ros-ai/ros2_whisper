@@ -19,7 +19,8 @@ public:
   std::vector<whisper_token> tokens();
 
   whisper_context *ctx;
-  whisper_full_params params;
+  whisper_full_params wparams;
+  whisper_context_params cparams;
 };
 } // end of namespace whisper
 #endif // WHISPER_UTIL__WHISPER_HPP_

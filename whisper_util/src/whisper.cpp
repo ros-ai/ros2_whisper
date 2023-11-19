@@ -1,18 +1,18 @@
 #include "whisper_util/whisper.hpp"
 
 namespace whisper {
-Whisper::Whisper() { params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY); }
+Whisper::Whisper() { wparams = whisper_full_default_params(WHISPER_SAMPLING_GREEDY); }
 
 Whisper::Whisper(const std::string &model_path) { initialize(model_path); }
 
 Whisper::~Whisper() { whisper_free(ctx); }
 
 void Whisper::initialize(const std::string &model_path) {
-  ctx = whisper_init_from_file(model_path.c_str());
+  ctx = whisper_init_from_file_with_params(model_path.c_str(), cparams);
 }
 
 std::string Whisper::forward(const std::vector<float> &input) {
-  if (whisper_full(ctx, params, input.data(), input.size()) != 0) {
+  if (whisper_full(ctx, wparams, input.data(), input.size()) != 0) {
     return {};
   }
   std::vector<std::string> segments;
