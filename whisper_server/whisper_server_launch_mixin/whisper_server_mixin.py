@@ -11,7 +11,7 @@ class InferenceMixin:
     def arg_model_name() -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
             name="model_name",
-            default_value="tiny.en",
+            default_value="base.en",
             description="Model name for whisper.cpp. Refer to https://huggingface.co/ggerganov/whisper.cpp.",
             choices=[
                 "tiny.en",
@@ -46,6 +46,14 @@ class InferenceMixin:
         )
 
     @staticmethod
+    def arg_use_gpu() -> DeclareLaunchArgument:
+        return DeclareLaunchArgument(
+            name="use_gpu",
+            default_value="true",
+            description="Use GPU for inference.",
+        )
+
+    @staticmethod
     def arg_batch_capacity() -> DeclareLaunchArgument:
         return DeclareLaunchArgument(
             name="batch_capacity",
@@ -71,7 +79,7 @@ class InferenceMixin:
 
     @staticmethod
     def param_model_name() -> Dict[str, LaunchConfiguration]:
-        return {"model_name": LaunchConfiguration("model_name", default="tiny.en")}
+        return {"model_name": LaunchConfiguration("model_name", default="base.en")}
 
     @staticmethod
     def param_n_threads() -> Dict[str, LaunchConfiguration]:
@@ -80,6 +88,10 @@ class InferenceMixin:
     @staticmethod
     def param_language() -> Dict[str, LaunchConfiguration]:
         return {"language": LaunchConfiguration("language", default="en")}
+
+    @staticmethod
+    def param_use_gpu() -> Dict[str, LaunchConfiguration]:
+        return {"use_gpu": LaunchConfiguration("use_gpu", default="true")}
 
     @staticmethod
     def param_batch_capacity() -> Dict[str, LaunchConfiguration]:
