@@ -18,6 +18,7 @@ class InferenceMixin:
                 "tiny",
                 "tiny.en",
                 "base",
+                "base.en",
                 "small.en",
                 "small",
                 "medium.en",
