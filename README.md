@@ -20,6 +20,9 @@ Run a client node (activated on space bar press):
 ros2 run whisper_demos whisper_on_key
 ```
 
+## Available Actions
+Action server under topic `inference` of type [Inference.action](whisper_msgs/action/Inference.action).
+
 ## Troubleshoot
 - Encoder inference time: https://github.com/ggerganov/whisper.cpp/issues/10#issuecomment-1302462960
 - Compile with GPU support (might differ between platforms): https://github.com/ggerganov/whisper.cpp#nvidia-gpu-support-via-cublas WHISPER_CUBLAS=On

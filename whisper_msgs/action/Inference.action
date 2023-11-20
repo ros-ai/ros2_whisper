@@ -1,3 +1,7 @@
+# max_duration: Maximum listening duration until transcriptions are returned.
+# transcriptions: Vector containing all intermediate transcriptions.
+# transcription: Intermediate transcription as feedback.
+
 builtin_interfaces/Duration max_duration
 ---
 string info
