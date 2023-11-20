@@ -42,12 +42,13 @@ void InferenceNode::declare_parameters_() {
   node_ptr_->declare_parameter("carry_over_capacity", 200);
 
   // whisper parameters
-  node_ptr_->declare_parameter("model_name", "tiny.en");
+  node_ptr_->declare_parameter("model_name", "base.en");
   // consider other parameters:
   // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
   node_ptr_->declare_parameter("language", "en");
   node_ptr_->declare_parameter("n_threads", 4);
   node_ptr_->declare_parameter("print_progress", false);
+  node_ptr_->declare_parameter("use_gpu", true);
 }
 
 void InferenceNode::initialize_whisper_() {
@@ -71,9 +72,10 @@ void InferenceNode::initialize_whisper_() {
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s initialized.", model_name.c_str());
 
   language_ = node_ptr_->get_parameter("language").as_string();
-  whisper_->params.language = language_.c_str();
-  whisper_->params.n_threads = node_ptr_->get_parameter("n_threads").as_int();
-  whisper_->params.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
+  whisper_->wparams.language = language_.c_str();
+  whisper_->wparams.n_threads = node_ptr_->get_parameter("n_threads").as_int();
+  whisper_->wparams.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
+  whisper_->cparams.use_gpu = node_ptr_->get_parameter("use_gpu").as_bool();
 }
 
 rcl_interfaces::msg::SetParametersResult
@@ -81,9 +83,9 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
   rcl_interfaces::msg::SetParametersResult result;
   for (const auto &parameter : parameters) {
     if (parameter.get_name() == "n_threads") {
-      whisper_->params.n_threads = parameter.as_int();
+      whisper_->wparams.n_threads = parameter.as_int();
       RCLCPP_INFO(node_ptr_->get_logger(), "Parameter %s set to %d.", parameter.get_name().c_str(),
-                  whisper_->params.n_threads);
+                  whisper_->wparams.n_threads);
       continue;
     }
     result.reason = "Parameter " + parameter.get_name() + " not handled.";
@@ -143,7 +145,8 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
     goal_handle->publish_feedback(feedback);
 
     // update inference result
-    if (result->transcriptions.size() == batched_buffer_->batch_idx() + 1) {
+    if (result->transcriptions.size() ==
+        static_cast<std::size_t>(batched_buffer_->batch_idx() + 1)) {
       result->transcriptions[result->transcriptions.size() - 1] = feedback->transcription;
     } else {
       result->transcriptions.push_back(feedback->transcription);

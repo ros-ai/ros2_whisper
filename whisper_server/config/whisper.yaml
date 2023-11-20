@@ -1,10 +1,11 @@
 whisper:
   ros__parameters:
     # whisper
-    model_name: "tiny.en" # other models https://huggingface.co/ggerganov/whisper.cpp
+    model_name: "base.en" # other models https://huggingface.co/ggerganov/whisper.cpp
     language: "en"
     n_threads: 4
     print_progress: false
+    use_gpu: true
 
     # buffer
     batch_capacity: 6 # seconds
