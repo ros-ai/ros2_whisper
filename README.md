@@ -5,7 +5,7 @@ ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 - Install `pyaudio`, see [install instructions](https://pypi.org/project/PyAudio/).
 - Build this repository, do
 ```shell
-mkdir -p whisper_ws/src && cd whisper_ws/src && \
+mkdir -p ros-ai/src && cd ros-ai/src && \
 git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
 colcon build --symlink-install --cmake-args -DWHISPER_CUBLAS=On
 ```
