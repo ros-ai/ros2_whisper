@@ -1,6 +1,10 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1.2.1 (2023-12-15)
+------------------
+* `whisper_cpp_vendor`: Set C++ standard to C++11 for target
+
 1.2.0 (2023-11-19)
 ------------------
 * `whisper_util`: Upgrade to `whisper.cpp` 1.5.0 release https://github.com/ggerganov/whisper.cpp/releases/tag/v1.5.0 (full CUDA backend)

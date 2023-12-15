@@ -28,7 +28,9 @@ set_target_properties(
   whisper PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES
     $<INSTALL_INTERFACE:.>
-)    
+  CXX_STANDARD
+    11
+)
 
 # install ggml header
 install(
