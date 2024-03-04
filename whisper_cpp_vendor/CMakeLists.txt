@@ -11,7 +11,7 @@ find_package(ament_cmake REQUIRED)
 
 set(WHISPER_VERSION_MAJOR 1 CACHE STRING "Major whisper.cpp version.")
 set(WHISPER_VERSION_MINOR 5 CACHE STRING "Minor whisper.cpp version.")
-set(WHISPER_VERSION_PATCH 0 CACHE STRING "Patch whisper.cpp version.")
+set(WHISPER_VERSION_PATCH 4 CACHE STRING "Patch whisper.cpp version.")
 
 FetchContent_Declare(
   whisper

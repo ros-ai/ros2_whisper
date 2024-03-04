@@ -7,7 +7,7 @@ ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 ```shell
 mkdir -p ros-ai/src && cd ros-ai/src && \
 git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
-colcon build --symlink-install --cmake-args -DWHISPER_CUBLAS=On
+colcon build --symlink-install --cmake-args -DWHISPER_CUBLAS=On --no-warn-unused-cli
 ```
 
 ## Demos
