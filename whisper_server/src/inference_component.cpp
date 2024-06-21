@@ -6,7 +6,7 @@ namespace whisper {
 class InferenceComponent {
 public:
   InferenceComponent(const rclcpp::NodeOptions &options)
-      : node_ptr_(rclcpp::Node::make_shared("inference", options)), whisper_node_(node_ptr_){};
+      : node_ptr_(rclcpp::Node::make_shared("inference", options)), whisper_node_(node_ptr_) {};
 
   rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface() const {
     return node_ptr_->get_node_base_interface();

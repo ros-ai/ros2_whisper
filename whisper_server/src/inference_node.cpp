@@ -45,10 +45,12 @@ void InferenceNode::declare_parameters_() {
   node_ptr_->declare_parameter("model_name", "base.en");
   // consider other parameters:
   // https://github.com/ggerganov/whisper.cpp/blob/a4bb2df36aeb4e6cfb0c1ca9fbcf749ef39cc852/whisper.h#L351
-  node_ptr_->declare_parameter("language", "en");
-  node_ptr_->declare_parameter("n_threads", 4);
-  node_ptr_->declare_parameter("print_progress", false);
-  node_ptr_->declare_parameter("use_gpu", true);
+  node_ptr_->declare_parameter("wparams.language", "en");
+  node_ptr_->declare_parameter("wparams.n_threads", 4);
+  node_ptr_->declare_parameter("wparams.print_progress", false);
+  node_ptr_->declare_parameter("cparams.flash_attn", true);
+  node_ptr_->declare_parameter("cparams.gpu_device", 0);
+  node_ptr_->declare_parameter("cparams.use_gpu", true);
 }
 
 void InferenceNode::initialize_whisper_() {
@@ -67,15 +69,17 @@ void InferenceNode::initialize_whisper_() {
   }
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s is available.", model_name.c_str());
 
+  language_ = node_ptr_->get_parameter("wparams.language").as_string();
+  whisper_->wparams.language = language_.c_str();
+  whisper_->wparams.n_threads = node_ptr_->get_parameter("wparams.n_threads").as_int();
+  whisper_->wparams.print_progress = node_ptr_->get_parameter("wparams.print_progress").as_bool();
+  whisper_->cparams.flash_attn = node_ptr_->get_parameter("cparams.flash_attn").as_bool();
+  whisper_->cparams.gpu_device = node_ptr_->get_parameter("cparams.gpu_device").as_int();
+  whisper_->cparams.use_gpu = node_ptr_->get_parameter("cparams.use_gpu").as_bool();
+
   RCLCPP_INFO(node_ptr_->get_logger(), "Initializing model %s...", model_name.c_str());
   whisper_->initialize(model_manager_->get_model_path(model_name));
   RCLCPP_INFO(node_ptr_->get_logger(), "Model %s initialized.", model_name.c_str());
-
-  language_ = node_ptr_->get_parameter("language").as_string();
-  whisper_->wparams.language = language_.c_str();
-  whisper_->wparams.n_threads = node_ptr_->get_parameter("n_threads").as_int();
-  whisper_->wparams.print_progress = node_ptr_->get_parameter("print_progress").as_bool();
-  whisper_->cparams.use_gpu = node_ptr_->get_parameter("use_gpu").as_bool();
 }
 
 rcl_interfaces::msg::SetParametersResult

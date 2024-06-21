@@ -11,7 +11,6 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp_components REQUIRED)
 
 set(WHISPER_NODES_DEPENDENCIES
@@ -86,9 +85,6 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
-
-# install launch mixins
-ament_python_install_package(${PROJECT_NAME}_launch_mixin)
 
 # install configurations
 install(

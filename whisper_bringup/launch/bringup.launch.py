@@ -1,6 +1,8 @@
+import os
+
+from ament_index_python import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from whisper_server_launch_mixin import WhisperServerMixin
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -16,30 +18,20 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     # launch whisper
-    ld.add_action(WhisperServerMixin.arg_model_name())
-    ld.add_action(WhisperServerMixin.arg_n_threads())
-    ld.add_action(WhisperServerMixin.arg_language())
-    ld.add_action(WhisperServerMixin.arg_use_gpu())
-    ld.add_action(WhisperServerMixin.arg_batch_capacity())
-    ld.add_action(WhisperServerMixin.arg_buffer_capacity())
-    ld.add_action(WhisperServerMixin.arg_carry_over_capacity())
+    whisper_config = os.path.join(
+        get_package_share_directory("whisper_server"), "config", "whisper.yaml"
+    )
     ld.add_action(
-        WhisperServerMixin.composable_node_container(
-            composable_node_descriptions=[
-                WhisperServerMixin.composable_node_inference(
-                    parameters=[
-                        WhisperServerMixin.param_model_name(),
-                        WhisperServerMixin.param_n_threads(),
-                        WhisperServerMixin.param_language(),
-                        WhisperServerMixin.param_use_gpu(),
-                        WhisperServerMixin.param_batch_capacity(),
-                        WhisperServerMixin.param_buffer_capacity(),
-                        WhisperServerMixin.param_carry_over_capacity(),
-                    ],
-                    remappings=[("/whisper/audio", "/audio_listener/audio")],
-                    namespace="whisper",
-                ),
-            ]
+        Node(
+            package="whisper_server",
+            executable="whisper",
+            output="screen",
+            namespace="whisper",
+            parameters=[whisper_config],
+            remappings=[
+                ("/whisper/audio", "/audio_listener/audio"),
+            ],
         )
     )
+
     return ld

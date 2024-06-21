@@ -1,6 +1,14 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1.3.0 (2024-06-21)
+------------------
+* `whisper_cpp_vendor`: `whisper.cpp` 1.5.4 to 1.6.2 release
+* `whisper_cpp_vendor`: CMake build flag `WHISPER_CUBLASE` to `WHISPER_CUDA`
+* `whisper_server`: Removed launch mixins
+* `whisper_server`: Updated parameters for `whisper.yaml`
+* `whisper_server`: Fixed `whisper` initialization order
+
 1.2.1 (2023-12-15)
 ------------------
 * `whisper_cpp_vendor`: Set C++ standard to C++11 for target
