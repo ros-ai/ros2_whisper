@@ -46,7 +46,7 @@ BatchedBuffer::BatchedBuffer(const std::chrono::milliseconds &batch_capacity,
                              const std::chrono::milliseconds &carry_over_capacity)
     : batch_capacity_(time_to_count(batch_capacity)),
       carry_over_capacity_(time_to_count(carry_over_capacity)), batch_idx_(0),
-      audio_buffer_(time_to_count(buffer_capacity)){
+      carry_over_audio_(carry_over_capacity_), audio_buffer_(time_to_count(buffer_capacity)) {
 
       };
 
@@ -77,9 +77,10 @@ bool BatchedBuffer::require_new_batch_() {
 }
 
 void BatchedBuffer::carry_over_() {
-  std::vector<float> carry_over(audio_.end() - carry_over_capacity_, audio_.end());
+  carry_over_audio_.insert(carry_over_audio_.begin(), audio_.end() - carry_over_capacity_,
+                           audio_.end());
   audio_.clear();
-  audio_.insert(audio_.end(), carry_over.begin(), carry_over.end());
+  audio_.insert(audio_.end(), carry_over_audio_.begin(), carry_over_audio_.end());
 }
 
 void BatchedBuffer::clear() {
