@@ -20,7 +20,7 @@ set(WHISPER_NODES_DEPENDENCIES
   rclcpp_action
   std_msgs
   std_srvs
-  whisper_msgs
+  whisper_idl
   whisper_util
 )
 

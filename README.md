@@ -20,10 +20,10 @@ Run a client node (activated on space bar press):
 ros2 run whisper_demos whisper_on_key
 ```
 
-Configure `whisper` parameters in [whisper.yaml](whisper_server/config//whisper.yaml).
+Configure `whisper` parameters in [whisper.yaml](whisper_server/config/whisper.yaml).
 
 ## Available Actions
-Action server under topic `inference` of type [Inference.action](whisper_msgs/action/Inference.action).
+Action server under topic `inference` of type [Inference.action](whisper_idl/action/Inference.action).
 
 ## Troubleshoot
 - Encoder inference time: https://github.com/ggerganov/whisper.cpp/issues/10#issuecomment-1302462960

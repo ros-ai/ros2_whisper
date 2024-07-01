@@ -12,14 +12,14 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "std_msgs/msg/int16_multi_array.hpp"
 
-#include "whisper_msgs/action/inference.hpp"
+#include "whisper_idl/action/inference.hpp"
 #include "whisper_util/audio_buffers.hpp"
 #include "whisper_util/model_manager.hpp"
 #include "whisper_util/whisper.hpp"
 
 namespace whisper {
 class InferenceNode {
-  using Inference = whisper_msgs::action::Inference;
+  using Inference = whisper_idl::action::Inference;
   using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
 
 public:

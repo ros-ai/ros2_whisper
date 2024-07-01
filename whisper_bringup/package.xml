@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>whisper_bringup</name>
-  <version>1.3.0</version>
+  <version>1.3.1</version>
   <description>TODO: Package description</description>
   <maintainer email="m.huber_1994@hotmail.de">mhubii</maintainer>
   <license>MIT</license>
@@ -11,7 +11,7 @@
 
   <exec_depend>rclcpp_components</exec_depend>
   <exec_depend>whisper_cpp_vendor</exec_depend>
-  <exec_depend>whisper_msgs</exec_depend>
+  <exec_depend>whisper_idl</exec_depend>
   <exec_depend>whisper_server</exec_depend>
   <exec_depend>whisper_util</exec_depend>
 

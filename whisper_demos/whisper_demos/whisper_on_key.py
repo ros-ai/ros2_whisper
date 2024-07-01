@@ -6,9 +6,9 @@ from pynput.keyboard import Key, Listener
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.task import Future
-from whisper_msgs.action._inference import Inference_FeedbackMessage
+from whisper_idl.action._inference import Inference_FeedbackMessage
 
-from whisper_msgs.action import Inference
+from whisper_idl.action import Inference
 
 
 class WhisperOnKey(Node):
