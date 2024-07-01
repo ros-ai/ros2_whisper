@@ -5,7 +5,7 @@
     wparams:
       language: "en"
       print_progress: false
-      n_threads: 1
+      n_threads: 4
     cparams:
       flash_attn: true
       gpu_device: 0

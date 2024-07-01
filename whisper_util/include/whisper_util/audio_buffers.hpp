@@ -84,6 +84,7 @@ protected:
   std::uint16_t batch_idx_;
 
   std::vector<float> audio_;
+  std::vector<float> carry_over_audio_;
   RingBuffer<std::int16_t> audio_buffer_;
 };
 } // end of namespace whisper
