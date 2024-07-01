@@ -1,6 +1,10 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1.3.1 (2024-07-01)
+------------------
+* `whisper_msgs`: Changed to `whisper_idl` package
+
 1.3.0 (2024-06-21)
 ------------------
 * `whisper_cpp_vendor`: `whisper.cpp` 1.5.4 to 1.6.2 release
