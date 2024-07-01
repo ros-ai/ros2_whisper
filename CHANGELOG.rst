@@ -4,6 +4,7 @@ Changelog for package ROS 2 Whisper
 1.3.1 (2024-07-01)
 ------------------
 * `whisper_msgs`: Changed to `whisper_idl` package
+* `whisper_bringup`: Changed executor to `MultiThreadedExecutor` so audio and inference can run in parallel on `whisper_server`
 
 1.3.0 (2024-06-21)
 ------------------
