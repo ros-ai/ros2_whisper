@@ -1,4 +1,4 @@
-/**/inference:
+inference:
   ros__parameters:
     # whisper
     model_name: "base.en" # other models https://huggingface.co/ggerganov/whisper.cpp
