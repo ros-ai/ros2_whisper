@@ -13,6 +13,5 @@ whisper:
         use_gpu: true
 
       # buffer
-      batch_capacity: 6 # seconds
-      buffer_capacity: 2 # seconds
-      carry_over_capacity: 200 # milliseconds
+      buffer_capacity: 10 # seconds
+      update_ms: 800 # milliseconds

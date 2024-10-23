@@ -45,12 +45,13 @@ protected:
   rclcpp_action::CancelResponse
   on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
   void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  std::string inference_(const std::vector<float> &audio);
+  std::pair<std::string, std::chrono::milliseconds> inference_(const std::vector<float> &audio);
   rclcpp::Time inference_start_time_;
 
   // whisper
   std::unique_ptr<ModelManager> model_manager_;
-  std::unique_ptr<BatchedBuffer> batched_buffer_;
+  std::unique_ptr<AudioRing> audio_ring_;
+  std::chrono::milliseconds update_ms_;
   std::unique_ptr<Whisper> whisper_;
   std::string language_;
   void initialize_whisper_();

@@ -26,20 +26,18 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
 
   // whisper
   model_manager_ = std::make_unique<ModelManager>();
-  batched_buffer_ = std::make_unique<BatchedBuffer>(
-      std::chrono::seconds(node_ptr_->get_parameter("batch_capacity").as_int()),
-      std::chrono::seconds(node_ptr_->get_parameter("buffer_capacity").as_int()),
-      std::chrono::milliseconds(node_ptr_->get_parameter("carry_over_capacity").as_int()));
+  audio_ring_ = std::make_unique<AudioRing>(
+                        std::chrono::seconds(node_ptr_->get_parameter("buffer_capacity").as_int()));
   whisper_ = std::make_unique<Whisper>();
+  update_ms_ = std::chrono::milliseconds(node_ptr_->get_parameter("update_ms").as_int());
 
   initialize_whisper_();
 }
 
 void InferenceNode::declare_parameters_() {
   // buffer parameters
-  node_ptr_->declare_parameter("batch_capacity", 6);
   node_ptr_->declare_parameter("buffer_capacity", 2);
-  node_ptr_->declare_parameter("carry_over_capacity", 200);
+  node_ptr_->declare_parameter("update_ms", 200);
 
   // whisper parameters
   node_ptr_->declare_parameter("model_name", "base.en");
@@ -101,7 +99,7 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
 }
 
 void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
-  batched_buffer_->enqueue(msg->data);
+  audio_ring_->enqueue(msg->data);
 }
 
 rclcpp_action::GoalResponse
@@ -122,13 +120,13 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
   auto feedback = std::make_shared<Inference::Feedback>();
   auto result = std::make_shared<Inference::Result>();
   inference_start_time_ = node_ptr_->now();
-
+  auto batch_idx = 0;
   while (rclcpp::ok()) {
     if (node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration) {
       result->info = "Inference timed out.";
       RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
       goal_handle->succeed(result);
-      batched_buffer_->clear();
+      audio_ring_->clear();
       return;
     }
 
@@ -136,50 +134,61 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
       result->info = "Inference cancelled.";
       RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
       goal_handle->canceled(result);
-      batched_buffer_->clear();
+      audio_ring_->clear();
       return;
     }
 
-    if (batched_buffer_->buffer_size() < WHISPER_SAMPLE_RATE) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
+    // run inference
+    auto [transcription, duration] = inference_(audio_ring_->peak());
+    if (duration > whisper::count_to_time(audio_ring_->size())) {
+        auto timeout_duration_ms = whisper::count_to_time(audio_ring_->size()).count();
+        RCLCPP_WARN(node_ptr_->get_logger(),
+              "Inference took longer than audio buffer size. This leads to un-inferenced audio "
+              "data. Consider increasing thread number or compile with accelerator support. \n "
+              "\t Inference Duration:   %lld,  Timeout after  %lld", 
+              static_cast<long long>(duration.count()), 
+              static_cast<long long>(timeout_duration_ms));
     }
 
-    // run inference
-    auto transcription = inference_(batched_buffer_->dequeue());
 
     // feedback to client
     feedback->transcription = transcription;
-    feedback->batch_idx = batched_buffer_->batch_idx();
+    feedback->batch_idx = batch_idx;
     goal_handle->publish_feedback(feedback);
+    result->transcriptions.push_back(feedback->transcription);
 
-    // update inference result
-    if (result->transcriptions.size() ==
-        static_cast<std::size_t>(batched_buffer_->batch_idx() + 1)) {
-      result->transcriptions[result->transcriptions.size() - 1] = feedback->transcription;
-    } else {
-      result->transcriptions.push_back(feedback->transcription);
+    // Sleep until next update
+    if (update_ms_ < duration) {
+      auto& clk = *node_ptr_->get_clock();
+      RCLCPP_INFO_THROTTLE(node_ptr_->get_logger(), clk, 10000,
+                            "Whisper Inference Lag:   "
+                            "Inference Duration:   %lldms,  Update step every  %lldms", 
+                            static_cast<long long>(duration.count()), 
+                            static_cast<long long>(update_ms_.count()));
     }
+    else {
+      std::this_thread::sleep_for(update_ms_ - duration);
+    }
+
+    ++batch_idx;
   }
 
   if (rclcpp::ok()) {
     result->info = "Inference succeeded.";
     RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
     goal_handle->succeed(result);
-    batched_buffer_->clear();
+    audio_ring_->clear();
   }
 }
 
-std::string InferenceNode::inference_(const std::vector<float> &audio) {
+
+std::pair<std::string, std::chrono::milliseconds>
+     InferenceNode::inference_(const std::vector<float> &audio) {
   auto inference_start_time = node_ptr_->now();
   auto transcription = whisper_->forward(audio);
   auto inference_duration =
       (node_ptr_->now() - inference_start_time).to_chrono<std::chrono::milliseconds>();
-  if (inference_duration > whisper::count_to_time(audio.size())) {
-    RCLCPP_WARN(node_ptr_->get_logger(),
-                "Inference took longer than audio buffer size. This leads to un-inferenced audio "
-                "data. Consider increasing thread number or compile with accelerator support.");
-  }
-  return transcription;
+  return {transcription, inference_duration};
 }
+
 } // end of namespace whisper
