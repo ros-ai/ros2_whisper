@@ -140,6 +140,11 @@ void InferenceNode::on_inference_accepted_(const std::shared_ptr<GoalHandleInfer
       return;
     }
 
+    if (batched_buffer_->buffer_size() < WHISPER_SAMPLE_RATE) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      continue;
+    }
+
     // run inference
     auto transcription = inference_(batched_buffer_->dequeue());
 

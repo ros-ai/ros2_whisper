@@ -65,7 +65,8 @@ std::vector<float> BatchedBuffer::dequeue() {
     carry_over_();
   }
   audio_.reserve(audio_.size() + audio_buffer_.size());
-  for (std::size_t i = 0; i < audio_buffer_.size(); ++i) {
+  const auto buff_size = audio_buffer_.size();
+  for (std::size_t i = 0; i < buff_size; ++i) {
     audio_.push_back(static_cast<float>(audio_buffer_.dequeue()) /
                      static_cast<float>(std::numeric_limits<std::int16_t>::max()));
   }

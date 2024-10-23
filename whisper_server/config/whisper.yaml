@@ -1,17 +1,18 @@
-/**/inference:
-  ros__parameters:
-    # whisper
-    model_name: "base.en" # other models https://huggingface.co/ggerganov/whisper.cpp
-    wparams:
-      language: "en"
-      print_progress: false
-      n_threads: 4
-    cparams:
-      flash_attn: true
-      gpu_device: 0
-      use_gpu: true
+whisper:
+  inference:
+    ros__parameters:
+      # whisper
+      model_name: "base.en" # other models https://huggingface.co/ggerganov/whisper.cpp
+      wparams:
+        language: "en"
+        print_progress: false
+        n_threads: 4
+      cparams:
+        flash_attn: true
+        gpu_device: 0
+        use_gpu: true
 
-    # buffer
-    batch_capacity: 6 # seconds
-    buffer_capacity: 2 # seconds
-    carry_over_capacity: 200 # milliseconds
+      # buffer
+      batch_capacity: 6 # seconds
+      buffer_capacity: 2 # seconds
+      carry_over_capacity: 200 # milliseconds
