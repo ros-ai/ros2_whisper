@@ -17,6 +17,14 @@ public:
   void initialize(const std::string &model_path);
   std::string forward(const std::vector<float> &input);
   std::vector<whisper_token> tokens();
+  void forward_tokenize(
+                  const std::vector<float> &input,
+                  std::vector<int> &token_ids,
+                  std::vector<std::string> &token_texts,
+                  std::vector<float> &token_probs,
+                  std::vector<int> &segment_start_token_idx,
+                  std::vector<int64_t> &segment_start_timestamp,
+                  std::vector<int64_t> &segment_end_timestamp);
 
   whisper_context *ctx;
   whisper_full_params wparams;

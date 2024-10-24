@@ -15,3 +15,4 @@ whisper:
       # buffer
       buffer_capacity: 10 # seconds
       update_ms: 800 # milliseconds
+      callback_ms: 1000 # milliseconds

@@ -181,7 +181,9 @@ void ThreadSafeRing<value_type>::clear() {
 **/
 
 AudioRing::AudioRing(const std::chrono::milliseconds &buffer_capacity)
-                                    : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)) {}
+                                    : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)) {
+  clear();
+}
 
 std::vector<float> AudioRing::peak() const {
   std::lock_guard<std::mutex> lock(mutex_);
