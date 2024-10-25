@@ -33,6 +33,8 @@ public:
   void enqueue(const_reference data);
   value_type dequeue();
   inline bool is_full() const { return size_ == capacity_; }
+  inline bool almost_full() const { return size_ + 1 == capacity_; }
+  inline bool empty() const { return size_ == 0; }
   void clear();
 
   inline const std::size_t &capacity() const { return capacity_; }

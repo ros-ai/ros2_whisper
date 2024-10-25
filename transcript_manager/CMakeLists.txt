@@ -20,6 +20,7 @@ set(TRANSCRIPT_MANAGER_DEPENDENCIES
   std_msgs
   std_srvs
   whisper_idl
+  whisper_util
 )
 
 foreach(DEPENDENCY IN LISTS TRANSCRIPT_MANAGER_DEPENDENCIES)

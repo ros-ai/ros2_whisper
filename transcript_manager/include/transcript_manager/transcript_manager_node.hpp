@@ -6,6 +6,8 @@
 // #include <numeric>
 // #include <stdexcept>
 #include <string>
+#include <vector>
+#include <utility>  // For std::pair
 // #include <mutex>
 
 // #include "rcl_interfaces/msg/set_parameters_result.hpp"
@@ -15,9 +17,11 @@
 
 #include "whisper_idl/action/inference.hpp"
 #include "whisper_idl/msg/whisper_tokens.hpp"
+#include "whisper_util/transcript_data.hpp"
+#include "whisper_util/audio_buffers.hpp"
 
 namespace whisper {
-using namespace std::chrono_literals;
+
 class TranscriptManagerNode {
   using Inference = whisper_idl::action::Inference;
   using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
@@ -32,6 +36,11 @@ protected:
   // audio subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
+  std::pair<std::vector<Word>, std::vector<SegmentMetaData>> 
+                              deserialize_msg_(const WhisperTokens::SharedPtr &msg);
+  void print_msg_(const WhisperTokens::SharedPtr &msg);
+  void print_new_words_(const std::vector<Word> &new_words,
+                          const std::vector<SegmentMetaData> &new_segments);
 
   // action server
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
@@ -43,7 +52,8 @@ protected:
   rclcpp::Time inference_start_time_;
 
   // Data
-  mutable std::string last_msg;
+  std::unique_ptr<ThreadSafeRing<std::pair<std::vector<Word>, std::vector<SegmentMetaData>>>> 
+                                                                                incoming_queue_;
 };
 } // end of namespace whisper
 #endif // WHISPER_NODES__TRANSCRIPT_MANAGER_NODE_HPP_
