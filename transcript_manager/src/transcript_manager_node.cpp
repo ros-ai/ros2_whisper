@@ -24,7 +24,6 @@ TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_
   incoming_queue_ = 
     std::make_unique<ThreadSafeRing<std::pair<std::vector<Word>, std::vector<SegmentMetaData>>>>(
                                                       10);
-  last_msg = "";
 }
 
 void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
@@ -65,7 +64,6 @@ void TranscriptManagerNode::on_inference_accepted_(
   auto result = std::make_shared<Inference::Result>();
   inference_start_time_ = node_ptr_->now();
   auto batch_idx = 0;
-  std::string last_sent_msg = last_msg;
   while (rclcpp::ok()) {
     if (node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration) {
       result->info = "Inference timed out.";
