@@ -20,6 +20,7 @@ setup(
     entry_points={
         "console_scripts": [
             "whisper_on_key = whisper_demos.whisper_on_key:main",
+            "stream = whisper_demos.stream:main",
         ],
     },
 )

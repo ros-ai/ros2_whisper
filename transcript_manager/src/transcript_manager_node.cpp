@@ -2,14 +2,14 @@
 
 namespace whisper {
 TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr) {
+    : node_ptr_(node_ptr), allowed_gaps(5) {
 
   // Subscribe to incoming token data
   auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
   rclcpp::SubscriptionOptions options;
   options.callback_group = cb_group;
   tokens_sub_ = node_ptr_->create_subscription<WhisperTokens>(
-    "tokens", 10, 
+    "tokens", rclcpp::SensorDataQoS(), 
     std::bind(&TranscriptManagerNode::on_whisper_tokens_, this, std::placeholders::_1), options);
 
   // Action Server
@@ -21,9 +21,17 @@ TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_
     std::bind(&TranscriptManagerNode::on_inference_accepted_, this, std::placeholders::_1));
 
   // Data Initialization
-  incoming_queue_ = 
-    std::make_unique<ThreadSafeRing<std::pair<std::vector<Word>, std::vector<SegmentMetaData>>>>(
-                                                      10);
+  incoming_queue_ = std::make_unique<ThreadSafeRing<WordsAndSegments>>(10);
+
+  // Outgoing data pub
+  transcript_pub_ = node_ptr_->create_publisher<AudioTranscript>("transcript_stream", 10);
+
+  clear_queue_timer_ = node_ptr_->create_wall_timer(std::chrono::milliseconds(1000), 
+                std::bind(&TranscriptManagerNode::clear_queue_callback_, this));
+}
+void TranscriptManagerNode::clear_queue_callback_() {
+  // RCLCPP_INFO(node_ptr_->get_logger(), "Timer Callback.");
+  clear_queue_();
 }
 
 void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
@@ -109,6 +117,308 @@ void TranscriptManagerNode::on_inference_accepted_(
 }
 
 
+void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_segments) {
+  auto stale_id = transcript_.get_stale_word_id();
+  
+  // 
+  std::string tmp_print_str_1_;
+  std::string tmp_print_str_2_;
+
+  if (transcript_.empty()) {
+    transcript_.push_back(new_words_and_segments);
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "First Words Added");
+    return;
+  }
+
+  // Get comparable strings for fuzzy lcs matching
+  auto [new_words, new_segments] = new_words_and_segments;
+  auto old_words = transcript_.get_words_splice();
+  std::vector<std::string> comp_words_old, comp_words_new;
+  std::vector<int> skipped_ids_old, skipped_ids_new;
+  size_t skipped_so_far = 0;
+  for (const auto &word : old_words) {
+    const auto &comp_word = word.get_comparable();
+    if (comp_word.empty()) {
+      skipped_so_far++;
+    } else {
+      comp_words_old.push_back(comp_word);  
+      skipped_ids_old.push_back(static_cast<int>(skipped_so_far));
+      tmp_print_str_1_ += "'" + comp_words_old[comp_words_old.size() - 1] + "', ";
+    }
+  }
+  skipped_so_far = 0;
+  for (size_t i = 0; i < new_words.size(); ++i) {
+    const auto &comp_word = new_words[i].get_comparable();
+    if (comp_word.empty()) {
+      skipped_so_far++;
+    } else {
+      comp_words_new.push_back(comp_word);  
+      skipped_ids_new.push_back(static_cast<int>(skipped_so_far));
+      tmp_print_str_2_ += "'" + comp_words_new[comp_words_new.size() - 1] + "', ";
+    }
+  }
+  RCLCPP_DEBUG(node_ptr_->get_logger(), " ");
+  RCLCPP_DEBUG(node_ptr_->get_logger(), "Comp Against:  %s", tmp_print_str_1_.c_str());
+  RCLCPP_DEBUG(node_ptr_->get_logger(), "   New Words:  %s", tmp_print_str_2_.c_str());
+
+  // Longest Common Substring with Gaps.
+  //   A:  Old words (already in Transcript), B:  New words recieved from live feed
+  auto [indiciesA, indiciesB] = lcs_indicies_(comp_words_old, comp_words_new, allowed_gaps);
+  if (indiciesA.empty()) {
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "  ---No overlap");
+    transcript_.push_back(new_words_and_segments);
+    return;
+  }
+  
+  // Merge segments
+  Transcript::Operations pending_ops;
+
+  auto prevA = indiciesA[0], prevB = indiciesB[0];
+  for(size_t i = 1; i <= indiciesA.size(); ++i) {
+    // Include the offsets from skipped words
+    auto prevA_id = prevA + skipped_ids_old[prevA];
+    auto prevB_id = prevB + skipped_ids_new[prevB];
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "\tPrevA: %d,  PrevB:  %d:   %s (%d)", 
+                                            prevA_id, prevB_id, 
+                                            old_words[prevA_id].get().c_str(),
+                                            old_words[prevA_id].get_occurrences());
+    
+    // Increment likely-hood of matched word in transcript
+    pending_ops.push_back({Transcript::OperationType::INCREMENT, prevA_id, -1});
+
+    // Current index "i" may not be valid
+    int curA_id = prevA_id + 1, curB_id = prevB_id + 1;
+    int nextA_id, nextB_id;
+    if (i == indiciesA.size()) {
+      // The following merge rules will run to the end of the new_words and old_words array.
+      // Most commonly, new words that do not exist in the transcript are inserted at the end.
+      nextA_id = old_words.size(), nextB_id = new_words.size();
+    } else {
+      nextA_id = indiciesA[i] + skipped_ids_old[indiciesA[i]];
+      nextB_id = indiciesB[i] + skipped_ids_new[indiciesB[i]];
+    }
+    // RCLCPP_INFO(node_ptr_->get_logger(), "\tNextA: %d,  NextB:  %d", nextA_id, nextB_id);
+    while (curA_id != nextA_id || curB_id != nextB_id) {
+      // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tCurA: %d,  CurB:  %d", curA_id, curB_id);
+      // 
+      // Custom Merge Rules
+      // 
+      // 0.  Skip start-of-segment markers
+      if (curA_id != nextA_id && old_words[curA_id].is_segment()) {
+        curA_id++;
+        continue;
+      }
+      if (curB_id != nextB_id && new_words[curB_id].is_segment()) {
+        curB_id++;
+        continue;
+      }
+      // 1.  Encourage over-writing punctuation in the transcript (if the update is a word)
+      if (curA_id != nextA_id && curB_id != nextB_id && 
+            old_words[curA_id].is_punct() && ! new_words[curB_id].is_punct()) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tWord conflict between "
+                                    "transcript punctuation and update.  '%s' (%d - 1) --> '%s'",
+                                            old_words[curA_id].get().c_str(),
+                                            old_words[curA_id].get_occurrences(),
+                                            new_words[curB_id].get().c_str());
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
+        pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
+        curA_id++; curB_id++;
+      }
+      // 2.  Conflict when there is a gap because of missmatched words in the LCS
+      else if (curA_id != nextA_id && curB_id != nextB_id) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tResolve Conflict Between '%s'(%d) and '%s'(%d)",
+                                                  old_words[curA_id].get().c_str(), 
+                                                  old_words[curA_id].get_occurrences(), 
+                                                  new_words[curB_id].get().c_str(), 
+                                                  new_words[curB_id].get_occurrences());
+        // If we have a conflict, the word's likely-hood could be decreased.
+        //    This causes some issues with words that sound the same (are constantly in conflict).
+        // pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
+        pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
+        curA_id++; curB_id++;
+      }
+      // 3.  Words appear in the audio steam (update) which are not part of the transcript
+      else if (curB_id != nextB_id) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tInserting word '%s' -- Between '%s' and '%s'",
+                                            new_words[curB_id].get().c_str(), 
+                                            old_words[curA_id-1].get().c_str(), 
+                                            curA_id == static_cast<int>(old_words.size()) ? 
+                                                        "END" : old_words[curA_id].get().c_str());
+
+        pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
+        curB_id++;
+      }
+      // 4.  Words in the transcript are missing from the update
+      else {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tDecreasing Likelihood of word:  '%s' (%d -> %d)", 
+                                                old_words[curA_id].get().c_str(),
+                                                old_words[curA_id].get_occurrences(),
+                                                old_words[curA_id].get_occurrences() - 1);
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
+        curA_id++;
+      }
+    }
+    // Prep for next loop
+    prevA = indiciesA[i]; prevB = indiciesB[i];
+  }
+
+  transcript_.run(pending_ops, new_words_and_segments);
+  transcript_.clear_mistakes(-1);
+
+  auto stale_id_new = std::max(stale_id, stale_id + indiciesA[0] - indiciesB[0]);
+  RCLCPP_DEBUG(node_ptr_->get_logger(), "Stale id update %d -> %d", stale_id, stale_id_new );
+  transcript_.set_stale_word_id(stale_id_new);
+}
+
+
+/*
+void TranscriptManagerNode::_backup_merge_one_(const WordsAndSegments &words_and_segments) {
+  std::string tmp_print_str_1_;
+  std::string tmp_print_str_2_;
+  std::string tmp_print_str_3_;
+  std::string tmp_print_str_4_;
+
+  if (transcript_.empty()) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "Adding First Words");
+    transcript_.push_back(words_and_segments);
+    RCLCPP_INFO(node_ptr_->get_logger(), "First Words Added");
+    return;
+  }
+  // Get comparable strings for fuzzy lcs matching
+  auto [words, segments] = words_and_segments;
+  std::vector<std::string> comparable_words;
+  std::vector<std::string> comparable_words_new;
+  std::vector<int> skipped_ids_new;
+  size_t skipped_so_far = 0;
+  for (size_t i = 0; i < words.size(); ++i) {
+    auto new_word_comp = words[i].get_comparable();
+    if (new_word_comp.empty()) {
+      skipped_so_far++;
+    } else {
+      comparable_words_new.push_back(new_word_comp);  
+      skipped_ids_new.push_back(static_cast<int>(skipped_so_far));
+      tmp_print_str_1_ += "'" + comparable_words_new[comparable_words_new.size()-1] + "', ";
+    }
+  }
+  for (const auto &word : transcript_.get_words_splice()) {
+    comparable_words.push_back(word.get_comparable());
+    tmp_print_str_2_ += "'" + comparable_words[comparable_words.size()-1] + "', ";
+  }
+  RCLCPP_INFO(node_ptr_->get_logger(), " ");
+  RCLCPP_INFO(node_ptr_->get_logger(), "Comp Against:  %s", tmp_print_str_2_.c_str());
+  RCLCPP_INFO(node_ptr_->get_logger(), "   New Words:  %s", tmp_print_str_1_.c_str());
+
+  // Longest Common Substring with Gaps
+  auto [indiciesA, indiciesB] = lcs_indicies_(
+                            comparable_words, comparable_words_new, allowed_gaps);
+  if (indiciesA.empty()) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "  ---No overlap");
+    transcript_.push_back(words_and_segments);
+    return;
+  }
+  
+  // Merge segments
+  std::vector<Transcript::Operation> pending_ops;
+  int op_offset = 0; // Increment when operation inerts into the array
+  auto prevA = indiciesA[0], prevB = indiciesB[0];
+  for(size_t i = 1; i <= indiciesA.size(); ++i) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "\tPrevA: %d,  PrevB:  %d", prevA, prevB);
+    // Increment likely-hood of matched word in transcript
+    pending_ops.push_back({Transcript::OperationType::INCREMENT, prevA, -1, op_offset});
+
+    // Current index "i" may not be valid
+    if (i == indiciesA.size()) {
+      break;
+    }
+    auto next_idxA = indiciesA[i], next_idxB = indiciesB[i];
+    auto curA = prevA + 1, curB = prevB + 1;
+    RCLCPP_INFO(node_ptr_->get_logger(), "\tCurA: %d,  CurB:  %d", curA, curB);
+    RCLCPP_INFO(node_ptr_->get_logger(), "\tNextA: %d,  NextB:  %d", next_idxA, next_idxB);
+
+    // Conflicting/Different words
+    while (curA != next_idxA && curB != next_idxB) {
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tLoop - CurA: %d,  CurB:  %d", curA, curB);
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tConflict Between '%s' and '%s'", 
+                                                  transcript_.get_active_word(curA).c_str(), 
+                                                  words[curB + skipped_ids_new[curB]].get().c_str());
+      pending_ops.push_back({Transcript::OperationType::CONFLICT, curA, 
+                                        curB + skipped_ids_new[curB], op_offset});
+      curA++; curB++;
+    }
+    // New words appear in the update.  Insert them into the transcript
+    while (curB != next_idxB) {
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tLoop - CurA: %d,  CurB:  %d", curA, curB);
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tInserting word '%s'  -- Between: '%s' and '%s'", 
+                                                  words[curB + skipped_ids_new[curB]].get().c_str(),
+                                                  transcript_.get_active_word(curA-1).c_str(),
+                                                  transcript_.get_active_word(curA).c_str());
+      pending_ops.push_back({Transcript::OperationType::INSERT, curA, 
+                                                  curB + skipped_ids_new[curB], op_offset});
+      op_offset++;
+      curB++;
+    }
+    // Words in the transcript are not in update.  Decrease likelihood
+    while (curA != next_idxA) {
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tLoop - CurA: %d,  CurB:  %d", curA, curB);
+      RCLCPP_INFO(node_ptr_->get_logger(), "\t\tDecreasing Likelihood of word:  '%s'", 
+                                                  transcript_.get_active_word(curA).c_str());
+      pending_ops.push_back({Transcript::OperationType::DECREMENT, curA, -1, op_offset});
+      curA++;
+    }
+
+    prevA = curA; prevB = curB;
+  }
+
+  // Handle words before indiciesB[0] in the new text
+  // -- TODO
+  // Insert the rest of words appearing in the new text on to the transcript
+  prevB++;
+  // while (prevB != static_cast<int>(words_and_segments.first.size())) {
+  while (prevB != static_cast<int>(comparable_words_new.size())) {
+    RCLCPP_INFO(node_ptr_->get_logger(), "\tCurA: %d,  CurB:  %d", prevA, prevB);
+    RCLCPP_INFO(node_ptr_->get_logger(), "\t\tFINAL Inserting word '%s'  -- After: '%s'", 
+                                words[prevB + skipped_ids_new[prevB]].get().c_str(),
+                                transcript_.get_active_word(comparable_words.size()-1).c_str());
+    pending_ops.push_back({Transcript::OperationType::INSERT, 
+                            static_cast<int>(comparable_words.size()), 
+                            prevB + skipped_ids_new[prevB], 
+                            op_offset});
+    op_offset++;
+    prevB++;
+  }
+
+  // Apply operations
+  for (const auto & op : pending_ops) {
+   transcript_.run_op(op, words_and_segments);
+  }
+}
+*/
+
+void TranscriptManagerNode::clear_queue_() {
+  bool one_merged = false;
+  while ( !incoming_queue_->empty() ) {
+    one_merged = true;
+    auto words_and_segments = incoming_queue_->dequeue();
+    // RCLCPP_INFO(node_ptr_->get_logger(), "Merging %ld words", words_and_segments.first.size());
+    merge_one_(words_and_segments);
+  }
+
+  if (one_merged) {
+    std::string print_str;
+    auto message = AudioTranscript();
+    auto words = transcript_.get_words();
+    for (auto & word : words) {
+      message.words.push_back(word.get());
+      message.occ.push_back(word.get_occurrences());
+      message.probs.push_back(1.);
+      print_str += word.get();
+    }
+    RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
+
+    message.active_index = transcript_.get_stale_word_id();
+    transcript_pub_->publish(message);
+  }
+}
 
 void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
   std::string print_str;
@@ -312,6 +622,89 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
   }
 
   return {words, segments};
+}
+
+
+std::tuple<std::vector<int>, std::vector<int>> TranscriptManagerNode::lcs_indicies_(
+                                                  const std::vector<std::string>& textA,
+                                                  const std::vector<std::string>& textB,
+                                                  int allowedGaps) {
+  int nA = textA.size();
+  int nB = textB.size();
+
+  // 2D DP table initialized to DPEntry(0, 0)
+  std::vector<std::vector<DPEntry>> dp(nA + 1, std::vector<DPEntry>(nB + 1, {0, 0}));
+  std::vector<std::vector<std::pair<int, int>>> 
+                      prev(nA + 1, std::vector<std::pair<int, int>>(nB + 1, {-1, -1}));
+
+  int maxLength = 0;
+  int endIndexA = -1, endIndexB = -1;
+
+  // Fill DP table
+  for (int i = 1; i <= nA; ++i) {
+    // RCLCPP_INFO(node_ptr_->get_logger(), "Word i: %s", textA[i-1].c_str());
+    for (int j = 1; j <= nB; ++j) {
+      // RCLCPP_INFO(node_ptr_->get_logger(), "\tWord j: %s", textB[j-1].c_str());
+      if (textA[i-1] == textB[j-1]) {
+        // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tMatch");
+        dp[i][j] = {dp[i-1][j-1].length + 1, 0};
+        prev[i][j] = {i-1, j-1};
+      } else {
+        // Case 1: skip one element from textA
+        if (dp[i-1][j].gaps < allowedGaps && dp[i][j].length < dp[i-1][j].length) {  
+          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from A");
+          dp[i][j] = {dp[i-1][j].length, dp[i-1][j].gaps + 1};
+          prev[i][j] = prev[i-1][j];
+        }
+
+        // Case 2: skip one element from textB
+        if (dp[i][j-1].gaps < allowedGaps && dp[i][j].length < dp[i][j-1].length) {
+          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from B");
+          dp[i][j] = {dp[i][j-1].length, dp[i][j-1].gaps + 1};
+          prev[i][j] = prev[i][j-1];
+        }
+
+        // Case 3: skip one element from textA AND textB
+        if (dp[i-1][j-1].gaps < allowedGaps && dp[i][j].length < dp[i-1][j-1].length) {
+          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from A AND B");
+          dp[i][j] = {dp[i-1][j-1].length, dp[i-1][j-1].gaps + 1};
+          prev[i][j] = prev[i-1][j-1];
+        }
+      }
+      // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tDP[%d][%d] Length: %d  Gap: %d", 
+      //             i, j, dp[i][j].length, dp[i][j].gaps);
+
+      // Track the maximum length
+      if (dp[i][j].length >= maxLength) {
+        maxLength = dp[i][j].length;
+        endIndexA = i;
+        endIndexB = j;
+        // RCLCPP_INFO(node_ptr_->get_logger(), " ---- New Best Length: %d  endpoint A: %d   endpoint B: %d", 
+        //             maxLength, endIndexA, endIndexB);
+      }
+    }
+  }
+
+  if (maxLength == 0) {
+    return {{}, {}};
+  }
+  
+  // Backtrack to find the longest matching subsequence
+  std::string print_str = "Backtrack pairs: ";
+  std::vector<int> resultA, resultB;
+  std::tie(endIndexA, endIndexB) = prev[endIndexA][endIndexB];
+  while (endIndexA != -1 && endIndexB != -1) {
+    print_str += "(" + std::to_string(endIndexA) + "," + std::to_string(endIndexB) + "), ";
+    resultA.push_back(endIndexA);  
+    resultB.push_back(endIndexB);
+    std::tie(endIndexA, endIndexB) = prev[endIndexA][endIndexB];
+  }
+  // RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
+
+  std::reverse(resultA.begin(), resultA.end());
+  std::reverse(resultB.begin(), resultB.end());
+
+  return {resultA, resultB};
 }
 
 

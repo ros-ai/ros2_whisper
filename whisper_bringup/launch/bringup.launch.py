@@ -12,7 +12,7 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description() -> LaunchDescription:
     active_arg = DeclareLaunchArgument(
         'active',
-        default_value="false",
+        default_value="true",
         description='Start with whisper node active'
     )
     active = LaunchConfiguration('active')

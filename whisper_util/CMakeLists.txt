@@ -17,6 +17,7 @@ add_library(${PROJECT_NAME} SHARED
   src/audio_buffers.cpp
   src/model_manager.cpp
   src/whisper.cpp
+  src/transcript_data.cpp
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

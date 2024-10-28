@@ -38,7 +38,7 @@ class AudioListenerNode(Node):
         )
 
         self.audio_publisher_ = self.create_publisher(
-            Int16MultiArray, "~/audio", 5
+            Int16MultiArray, "~/audio", qos_profile=1
         )
 
         self.audio_publisher_timer_ = self.create_timer(
