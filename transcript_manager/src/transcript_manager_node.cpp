@@ -2,7 +2,7 @@
 
 namespace whisper {
 TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr), allowed_gaps(5) {
+    : node_ptr_(node_ptr), allowed_gaps(4) {
 
   // Subscribe to incoming token data
   auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -41,7 +41,7 @@ void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr ms
 
   // print_msg_(msg);
   auto [words, segments] = deserialize_msg_(msg);
-  // print_new_words_(words, segments);
+  print_new_words_(words, segments);
 
   incoming_queue_->enqueue({words, segments});
   if (incoming_queue_->almost_full()) {
@@ -178,13 +178,12 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
     // Include the offsets from skipped words
     auto prevA_id = prevA + skipped_ids_old[prevA];
     auto prevB_id = prevB + skipped_ids_new[prevB];
-    RCLCPP_DEBUG(node_ptr_->get_logger(), "\tPrevA: %d,  PrevB:  %d:   %s (%d)", 
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "\tPrevA: %d,  PrevB:  %d:   %s (%f\\%d)", 
                                             prevA_id, prevB_id, 
                                             old_words[prevA_id].get().c_str(),
+                                            old_words[prevA_id].get_prob(),
                                             old_words[prevA_id].get_occurrences());
-    
-    // Increment likely-hood of matched word in transcript
-    pending_ops.push_back({Transcript::OperationType::INCREMENT, prevA_id, -1});
+    pending_ops.push_back({Transcript::OperationType::MATCHED_WORD, prevA_id, prevB_id});
 
     // Current index "i" may not be valid
     int curA_id = prevA_id + 1, curB_id = prevB_id + 1;
@@ -192,6 +191,7 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
     if (i == indiciesA.size()) {
       // The following merge rules will run to the end of the new_words and old_words array.
       // Most commonly, new words that do not exist in the transcript are inserted at the end.
+      // TODO:  Apply these rules to the begining (before first LCS Match)
       nextA_id = old_words.size(), nextB_id = new_words.size();
     } else {
       nextA_id = indiciesA[i] + skipped_ids_old[indiciesA[i]];
@@ -215,21 +215,25 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
       // 1.  Encourage over-writing punctuation in the transcript (if the update is a word)
       if (curA_id != nextA_id && curB_id != nextB_id && 
             old_words[curA_id].is_punct() && ! new_words[curB_id].is_punct()) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tWord conflict between "
-                                    "transcript punctuation and update.  '%s' (%d - 1) --> '%s'",
+        RCLCPP_DEBUG(node_ptr_->get_logger(), 
+          "\t\tWord Conflict Transcript (punct) vs update (word).  '%s' (%f\\->%d) --> '%s'",
                                             old_words[curA_id].get().c_str(),
-                                            old_words[curA_id].get_occurrences(),
+                                            old_words[curA_id].get_prob(),
+                                            old_words[curA_id].get_occurrences()-1,
                                             new_words[curB_id].get().c_str());
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
         pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
         curA_id++; curB_id++;
       }
       // 2.  Conflict when there is a gap because of missmatched words in the LCS
       else if (curA_id != nextA_id && curB_id != nextB_id) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tResolve Conflict Between '%s'(%d) and '%s'(%d)",
+        RCLCPP_DEBUG(node_ptr_->get_logger(), 
+                          "\t\tResolve Conflict Between '%s'(%f\\%d) and '%s'(%f\\%d)",
                                                   old_words[curA_id].get().c_str(), 
+                                                  old_words[curA_id].get_prob(), 
                                                   old_words[curA_id].get_occurrences(), 
                                                   new_words[curB_id].get().c_str(), 
+                                                  new_words[curB_id].get_prob(),
                                                   new_words[curB_id].get_occurrences());
         // If we have a conflict, the word's likely-hood could be decreased.
         //    This causes some issues with words that sound the same (are constantly in conflict).
@@ -250,8 +254,10 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
       }
       // 4.  Words in the transcript are missing from the update
       else {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tDecreasing Likelihood of word:  '%s' (%d -> %d)", 
+        RCLCPP_DEBUG(node_ptr_->get_logger(), 
+                                  "\t\tDecreasing Likelihood of word:  '%s' (%f\\%d->%d)", 
                                                 old_words[curA_id].get().c_str(),
+                                                old_words[curA_id].get_prob(),
                                                 old_words[curA_id].get_occurrences(),
                                                 old_words[curA_id].get_occurrences() - 1);
         pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
@@ -410,7 +416,8 @@ void TranscriptManagerNode::clear_queue_() {
     for (auto & word : words) {
       message.words.push_back(word.get());
       message.occ.push_back(word.get_occurrences());
-      message.probs.push_back(1.);
+      message.probs.push_back(word.get_prob());
+      // print_str += word.get_print_str(2);
       print_str += word.get();
     }
     RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());

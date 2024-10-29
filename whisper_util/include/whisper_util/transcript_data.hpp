@@ -8,13 +8,8 @@
 #include <cstdint>
 #include <algorithm> // reverse
 #include <tuple>
-
-
-#include <cstdint>
-
-#include <iostream>
-
-
+#include <iomanip>
+#include <sstream>
 
 namespace whisper {
 
@@ -40,6 +35,10 @@ private:
 public:
   std::string get_data() const {
     return data_;
+  }
+
+  float get_prob() const {
+    return prob_;
   }
 
   SingleToken(const std::string& data_, float prob_)
@@ -117,6 +116,7 @@ private:
   std::vector<int> word_occurances_;
   // SegmentMetaData segment_data_;
   std::vector<bool> word_is_punct_;
+  std::vector<float> word_probs_;
   bool is_segment_;
 
   // Calculated and cached
@@ -166,15 +166,12 @@ public:
     }
   }
 
-  int get_occurrences() const {
-    return word_occurances_[0];
-  }
-
   void clear() {
     word_tokens_.clear();
     word_occurances_.clear();
     word_is_punct_.clear();
     word_cache_.clear();
+    word_probs_.clear();
     comparable_word_cache_.clear();
   }
 
@@ -187,6 +184,14 @@ public:
 
   std::string get() const {
     return word_cache_[0];
+  }
+  
+  int get_occurrences() const {
+    return word_occurances_[0];
+  }
+
+  float get_prob() const {
+    return word_probs_[0];
   }
 
   std::string get(const int i) const {
@@ -222,10 +227,16 @@ public:
 
   void build_cache() {
     std::string word;
+    float prob = 0.;
+    int prob_count = 0;
     for (auto& token : word_tokens_[word_tokens_.size()-1]) {
       word += token.get_data();
+      prob += token.get_prob();
+      prob_count++;
     }
+    prob /= prob_count;
     word_cache_.push_back(word);
+    word_probs_.push_back(prob);
     comparable_word_cache_.push_back(compute_comparable(word));
   }
 
@@ -243,13 +254,14 @@ public:
     std::swap(word_tokens_[0], word_tokens_[new_best]);
     std::swap(word_occurances_[0], word_occurances_[new_best]);
     std::swap(word_cache_[0], word_cache_[new_best]);
+    std::swap(word_probs_[0], word_probs_[new_best]);
     std::swap(word_is_punct_[0], word_is_punct_[new_best]);
     std::swap(comparable_word_cache_[0], comparable_word_cache_[new_best]);
   }
 
   std::pair<bool, int> get_match(const std::string &other_text) const {
-    for (size_t i=0; i<word_tokens_.size(); i++) {
-      if(word_cache_[i] == other_text) {
+    for (size_t i = 0; i < word_tokens_.size(); i++) {
+      if (word_cache_[i] == other_text) {
         return {true, static_cast<int>(i)};
       }
     }
@@ -273,21 +285,25 @@ public:
     // printf("\nFIXED CONFLICT Between: '%s' and '%s'.   ", get().c_str(), no_conflict_other.get().c_str());
     auto [match_found, match_idx] = get_match(no_conflict_other.get());
     if (match_found) {
+      // Running average of the probability
+      // printf("Match idx:  %d (occ:  %d),  Prob %.2f update to:  ", match_idx, word_occurances_[match_idx], word_probs_[match_idx]);
       word_occurances_[match_idx]++;
+      word_probs_[match_idx] = (word_probs_[match_idx]*(word_occurances_[match_idx] - 1) +
+                                  no_conflict_other.get_prob())  / word_occurances_[match_idx];
+      // printf("%.2f.\n", word_probs_[match_idx]);
       if (word_occurances_[match_idx] >= word_occurances_[0]) {
         swap(match_idx);
-        // printf("-- Swapped Normal\n");
       }
     } else {
+      // printf("No match found... Adding as new word\n");
       add(no_conflict_other.get_best_tokens(), no_conflict_other.is_punct());
-      // Re-run compare algorithm. Match will be found
+      // Re-run compare(..), consider swapping
       auto [match_found_new, match_idx_new] = get_match(no_conflict_other.get());
       if (match_found_new) {
-        if (word_occurances_[match_idx_new] > word_occurances_[0]) {
+        if (word_occurances_[match_idx_new] >= word_occurances_[0]) {
           swap(match_idx_new);
-          // printf("-- Swapped Special after Adding\n");
         }
-      } 
+      }
     }
   }
 
@@ -301,25 +317,48 @@ public:
     return top_n;
   }
 
+  // std::string get_print_str(const int min_count) const {
+  //   auto ids = get_top_n_ids(min_count);
+  //   if (ids.size() <= 1) {
+  //     return get();
+  //   }
+  //   std::string str = "_{";
+  //   bool first_run = true;
+  //   for (const auto id : ids) {
+  //     if (!first_run) {
+  //       str += " | ";
+  //     }
+  //     str += word_cache_[id];
+  //     str += " (";
+  //     str += std::to_string(word_occurances_[id]);
+  //     str += ")";
+  //     first_run = false;
+  //   }
+  //   str += "}_";
+  //   return str;
+  // }
   std::string get_print_str(const int min_count) const {
     auto ids = get_top_n_ids(min_count);
     if (ids.size() <= 1) {
       return get();
     }
-    std::string str = "_{";
+    std::stringstream ss;
+    ss << "_{";
     bool first_run = true;
     for (const auto id : ids) {
       if (!first_run) {
-        str += " | ";
+        ss << " | ";
       }
-      str += word_cache_[id];
-      str += " (";
-      str += word_occurances_[id];
-      str += ")";
+      ss << word_cache_[id];
+      ss << " (";
+      ss << std::setprecision(2) << word_probs_[id];
+      ss << "\\";
+      ss << word_occurances_[id];
+      ss << ")";
       first_run = false;
     }
-    str += "}_";
-    return str;
+    ss <<  "}_";
+    return ss.str();
   }
 
   void print_all() const {
@@ -327,7 +366,7 @@ public:
   }
 
 private:
-  std::string to_lower_case_(const std::string &input) {
+  std::string to_lower_case_(const std::string &input) const {
     std::string result;
     for (char ch : input) {
       // result += std::tolower(static_cast<unsigned char>(ch));
@@ -336,11 +375,12 @@ private:
     return result;
   }
 
-  void remove_whitespace_(std::string &input) {
+  void remove_whitespace_(std::string &input) const {
     input.erase(std::remove_if(input.begin(), input.end(), ::isspace), input.end());
   }
 
-  void replace_number_word_with_digit_(std::string &input) {
+  void replace_number_word_with_digit_(std::string &input) const {
+    // TODO
     const std::unordered_map<std::string, std::string> number_map = {
         {"zero", "0"}, {"one", "1"}, {"two", "2"}, {"three", "3"}, {"four", "4"},
         {"five", "5"}, {"six", "6"}, {"seven", "7"}, {"eight", "8"}, {"nine", "9"},
@@ -371,7 +411,7 @@ private:
   int last_segment_id_;
 
 public:
-  enum OperationType { INCREMENT, DECREMENT, INSERT, CONFLICT, REMOVE};
+  enum OperationType { INCREMENT, DECREMENT, INSERT, CONFLICT, REMOVE, MATCHED_WORD};
   struct Operation {
     const OperationType op_type_;
     const int id_;
@@ -380,7 +420,8 @@ public:
     Operation(const OperationType op_type, const int id) : 
                     op_type_(op_type), id_(id), other_id_(-1) {
       if (op_type_ == INSERT || 
-          op_type_ == CONFLICT) {
+          op_type_ == CONFLICT ||
+          op_type_ == MATCHED_WORD) {
         throw std::runtime_error("Missing argument on Operation initialization.");
       }
     }

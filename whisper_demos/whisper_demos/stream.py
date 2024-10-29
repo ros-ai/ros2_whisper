@@ -10,7 +10,7 @@ class TranscriptSubscriber(Node):
         super().__init__('transcript_subscriber')
 
         # Declare the threshold parameter with a default value of 1
-        self.declare_parameter('threshold', 2.0)
+        self.declare_parameter('threshold', 1.0)
         
         # Subscribe to the audio transcript topic
         self.subscription = self.create_subscription(

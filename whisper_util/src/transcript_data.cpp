@@ -54,6 +54,10 @@ void Transcript::run(const Operations &operations, const WordsAndSegments &words
         remove_word(op.id_ + op_id_offset);
         op_id_offset--;
         break;
+      case OperationType::MATCHED_WORD:
+        conflict_merge_word(op.id_ + op_id_offset, words_other, op.other_id_);
+        inc_word(op.id_ + op_id_offset);
+        break;
     }
   }
 }
