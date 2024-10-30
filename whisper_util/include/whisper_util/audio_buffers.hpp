@@ -17,6 +17,10 @@ inline std::chrono::milliseconds count_to_time(const std::size_t &count) {
   return std::chrono::milliseconds(count * static_cast<std::size_t>(1e3) / WHISPER_SAMPLE_RATE);
 };
 
+inline std::chrono::nanoseconds count_to_time_ns(const std::size_t &count) {
+  return std::chrono::nanoseconds(count * static_cast<size_t>(1e9) / WHISPER_SAMPLE_RATE);
+};
+
 /**
  * @brief A ring buffer implementation. This buffer is **not** thread-safe. It is the user's
  * responsibility to ensure thread-safety.
@@ -42,7 +46,7 @@ public:
 
 protected:
   void increment_head_();
-  void increment_tail_();
+  virtual void increment_tail_();
 
   std::size_t capacity_;
   std::vector<value_type> buffer_;
@@ -88,13 +92,36 @@ protected:
  *
  */
 class AudioRing : public ThreadSafeRing<std::int16_t> {
-public:
-  AudioRing(const std::chrono::milliseconds &buffer_capacity = std::chrono::seconds(10));
+private:
+  // Keep a timestamp of the start of the buffer.
+  std::chrono::system_clock::time_point audio_start_;
+  const std::chrono::nanoseconds time_inc_;
+  bool audio_start_set;
 
-  // Get a logical order copy of all data in ring buffer
-  std::vector<float> peak() const;
+protected:
+  // Overwrite this function to also increase the buffer audio_start_ timestamp when dropping data
+  void increment_tail_() override;
+
+public:
+  AudioRing(const std::chrono::milliseconds &buffer_capacity,
+                          std::chrono::system_clock::time_point cur_time);
+  AudioRing(const std::chrono::milliseconds &buffer_capacity);
+
+  void set_start_timestamp(std::chrono::system_clock::time_point cur_time);
+  std::chrono::system_clock::time_point get_start_timestamp() const;
+
+  // Get a logical order copy of all data in ring buffer, along with the timestamp
+  std::tuple<std::vector<float>, std::chrono::system_clock::time_point> peak() const;
+
+  // Add zeros so the audio_start_ + count_to_time(size_) = cur_time.
+  //     :return: The number of zeros added.
+  size_t decay(std::chrono::system_clock::time_point cur_time);
 
   void clear();
+
+  bool is_audio_start_set() const {
+    return audio_start_set;
+  }
 };
 
 
@@ -182,12 +209,20 @@ void ThreadSafeRing<value_type>::clear() {
  * Implementations -- AudioRing.cpp
 **/
 
+AudioRing::AudioRing(const std::chrono::milliseconds &buffer_capacity,
+                      std::chrono::system_clock::time_point cur_time)
+                                : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)),
+                                time_inc_(count_to_time_ns(1)), audio_start_set(true) {
+  clear();
+  set_start_timestamp(cur_time);
+}
 AudioRing::AudioRing(const std::chrono::milliseconds &buffer_capacity)
-                                    : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)) {
+                                : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)),
+                                time_inc_(count_to_time_ns(1)), audio_start_set(false) {
   clear();
 }
 
-std::vector<float> AudioRing::peak() const {
+std::tuple<std::vector<float>, std::chrono::system_clock::time_point> AudioRing::peak() const {
   std::lock_guard<std::mutex> lock(mutex_);
 
   std::vector<float> result;
@@ -196,17 +231,55 @@ std::vector<float> AudioRing::peak() const {
     result.push_back(static_cast<float>(this->buffer_[(this->tail_ + i) % this->capacity_]) /
                      static_cast<float>(std::numeric_limits<std::int16_t>::max()));
   }
-  return result;
+  return {result, audio_start_};
 }
 
 void AudioRing::clear() {
   // First clear
   ThreadSafeRing<std::int16_t>::clear();
 
-  // Then, enqueue 1 second of silence
-  enqueue(std::vector<std::int16_t>(WHISPER_SAMPLE_RATE, 0));
+  // Then, enqueue 2 seconds of silence
+  enqueue(std::vector<std::int16_t>(WHISPER_SAMPLE_RATE*2, 0));
+  audio_start_set = false;
 }
 
+void AudioRing::increment_tail_() {
+  audio_start_ += time_inc_;
+  ThreadSafeRing::increment_tail_();
+}
+
+size_t AudioRing::decay(std::chrono::system_clock::time_point cur_time) {
+  auto audio_end = audio_start_ + count_to_time(size_);
+  if (audio_end > cur_time) {
+    // Somehow the audio buffer goes past the current time, nothing to do
+    return 0;
+  }
+  std::chrono::milliseconds diff_ms = 
+          std::chrono::duration_cast<std::chrono::milliseconds>(cur_time - audio_end);
+  size_t zeros_to_add = time_to_count(diff_ms);
+  enqueue(std::vector<std::int16_t>(zeros_to_add, 0));
+  return zeros_to_add;
+}
+
+void AudioRing::set_start_timestamp(std::chrono::system_clock::time_point cur_time) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  // Since we are setting the start time of the buffer based on the current time,
+  //    subtract what data is in the buffer against the current time.
+  std::chrono::milliseconds elapsed = count_to_time(size_);
+  if (elapsed > 
+          std::chrono::duration_cast<std::chrono::milliseconds>(cur_time.time_since_epoch())) {
+    // Shouldn't be possible, cur time should be seconds from 1970
+    audio_start_ = cur_time;
+    return;
+  }
+  audio_start_ = cur_time - elapsed;
+  audio_start_set = true;
+}
+
+std::chrono::system_clock::time_point AudioRing::get_start_timestamp() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return audio_start_;
+}
 
 } // end of namespace whisper
 #endif // WHISPER_UTIL__AUDIO_BUFFERS_HPP_

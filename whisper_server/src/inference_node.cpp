@@ -10,7 +10,8 @@ InferenceNode::InferenceNode(const rclcpp::Node::SharedPtr node_ptr)
   rclcpp::SubscriptionOptions options;
   options.callback_group = cb_group;
   audio_sub_ = node_ptr_->create_subscription<std_msgs::msg::Int16MultiArray>(
-      "audio", 5, std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1), options);
+      "audio", rclcpp::SensorDataQoS(), 
+      std::bind(&InferenceNode::on_audio_, this, std::placeholders::_1), options);
 
   // inference action server
   // inference_action_server_ = rclcpp_action::create_server<Inference>(
@@ -160,7 +161,54 @@ InferenceNode::on_parameter_set_(const std::vector<rclcpp::Parameter> &parameter
   return result;
 }
 
+
+
+void InferenceNode::on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
+  if (audio_ring_->almost_full()) {
+    auto audio_buff_start = audio_ring_->get_start_timestamp();
+    auto audio_buff_len_ms = count_to_time(audio_ring_->size());
+    auto cur_time = ros_time_to_chrono(node_ptr_->get_clock()->now());
+    auto msg_duration_ms = count_to_time(msg->data.size());
+    size_t elapsed_count;
+    bool negative;
+    if ((audio_buff_start + audio_buff_len_ms) > (cur_time - msg_duration_ms)) {
+      negative = true;
+      elapsed_count = 
+        time_to_count(
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+            (audio_buff_start + audio_buff_len_ms) - (cur_time - msg_duration_ms)));
+    } else {
+      negative = false;
+      elapsed_count = 
+        time_to_count(
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+            (cur_time - msg_duration_ms) - (audio_buff_start + audio_buff_len_ms)));
+    }
+    auto [audio_buff_start_s, audio_buff_start_ns] 
+                    = chrono_time_to_ros(audio_buff_start);
+    auto [audio_buff_end_s, audio_buff_end_ns] 
+                    = chrono_time_to_ros(audio_buff_start + audio_buff_len_ms);
+    auto [cur_s, cur_ns] = chrono_time_to_ros(cur_time);
+
+    auto& clk = *node_ptr_->get_clock();
+    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 1000,
+                "Audio Start:  %ld.%ld,  Audio End:  %ld.%ld,  Current time:  %ld.%ld\n"
+                "Audio buffer length:  %ldms,    Message length:  %ldms\n"
+                "Elapsed pad length:   %s%ld",
+                audio_buff_start_s, audio_buff_start_ns,
+                audio_buff_end_s, audio_buff_end_ns,
+                cur_s, cur_ns,
+                audio_buff_len_ms.count(), msg_duration_ms.count(),
+                negative ? "-": "", elapsed_count);  
+    
+  }
+}
+
 void InferenceNode::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
+  if (!audio_ring_->is_audio_start_set()) {
+    audio_ring_->set_start_timestamp(ros_time_to_chrono(node_ptr_->get_clock()->now()));
+  }
+  // on_audio_debug_print_(msg);
   audio_ring_->enqueue(msg->data);
 }
 
@@ -263,7 +311,14 @@ whisper_idl::msg::WhisperTokens InferenceNode::create_message_() {
 }
 
 bool InferenceNode::run_inference_(whisper_idl::msg::WhisperTokens &result) {
-  const auto &data = audio_ring_->peak();
+  // const auto &data = audio_ring_->peak();
+  const auto& [data, timestamp] = audio_ring_->peak();
+  auto [sec, nanosec] = chrono_time_to_ros(timestamp);
+  result.stamp.sec = sec;
+  result.stamp.nanosec = nanosec;
+  // RCLCPP_INFO(node_ptr_->get_logger(), "Audio Inference Start:   %d.%d", 
+  //                                result.stamp.sec, result.stamp.nanosec);
+
 
   // if (whisper_mutex_.try_lock()) {
   if (true) {
