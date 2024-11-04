@@ -203,12 +203,27 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
       // 
       // Custom Merge Rules
       // 
-      // 0.  Skip start-of-segment markers
-      if (curA_id != nextA_id && old_words[curA_id].is_segment()) {
+      // 0.1  If both are segments, merge transcript segment data
+      if (curA_id != nextA_id && curB_id != nextB_id && 
+            old_words[curA_id].is_segment() && new_words[curB_id].is_segment()) {
+        {
+          RCLCPP_DEBUG(node_ptr_->get_logger(), 
+            "\nSegment Merge.  '\n%s'\nv.s. (new)\n%s",
+                                              old_words[curA_id].get_segment_data_str().c_str(),
+                                              new_words[curB_id].get_segment_data_str().c_str());
+          pending_ops.push_back({Transcript::OperationType::MERGE_SEGMENTS, curA_id, curB_id});
+        }
+      }
+      // 0.1  If the transcript has a segment not present in the update, schedule it for deletion
+      else if (curA_id != nextA_id && old_words[curA_id].is_segment()) {
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
         curA_id++;
         continue;
       }
-      if (curB_id != nextB_id && new_words[curB_id].is_segment()) {
+      // 0.2  Add segments from the update to the segment (may get deleted later)
+      else if (curB_id != nextB_id && new_words[curB_id].is_segment()) {
+        pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
         curB_id++;
         continue;
       }
@@ -225,7 +240,7 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
         pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
         curA_id++; curB_id++;
       }
-      // 2.  Conflict when there is a gap because of missmatched words in the LCS
+      // 1.2  Conflict when there is a gap because of missmatched words in the LCS
       else if (curA_id != nextA_id && curB_id != nextB_id) {
         RCLCPP_DEBUG(node_ptr_->get_logger(), 
                           "\t\tResolve Conflict Between '%s'(%f\\%d) and '%s'(%f\\%d)",
@@ -241,7 +256,7 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
         pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
         curA_id++; curB_id++;
       }
-      // 3.  Words appear in the audio steam (update) which are not part of the transcript
+      // 1.3  Words appear in the audio steam (update) which are not part of the transcript
       else if (curB_id != nextB_id) {
         RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tInserting word '%s' -- Between '%s' and '%s'",
                                             new_words[curB_id].get().c_str(), 
@@ -252,7 +267,7 @@ void TranscriptManagerNode::merge_one_(const WordsAndSegments &new_words_and_seg
         pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
         curB_id++;
       }
-      // 4.  Words in the transcript are missing from the update
+      // 1__  Words in the transcript are missing from the update
       else {
         RCLCPP_DEBUG(node_ptr_->get_logger(), 
                                   "\t\tDecreasing Likelihood of word:  '%s' (%f\\%d->%d)", 
@@ -410,21 +425,36 @@ void TranscriptManagerNode::clear_queue_() {
   }
 
   if (one_merged) {
-    std::string print_str;
+    // Publish new transcript
     auto message = AudioTranscript();
-    auto words = transcript_.get_words();
-    for (auto & word : words) {
-      message.words.push_back(word.get());
-      message.occ.push_back(word.get_occurrences());
-      message.probs.push_back(word.get_prob());
-      // print_str += word.get_print_str(2);
-      print_str += word.get();
-    }
-    RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
-
-    message.active_index = transcript_.get_stale_word_id();
+    serialize_transcript_(message);
     transcript_pub_->publish(message);
+
+    {
+      // Debug Print
+      const auto print_str = transcript_.get_print_str();
+      RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
+    }
   }
+}
+
+void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {
+  int words_skipped = 0; // Skip adding segments into the serialized word array
+  for (auto it = transcript_.begin(); it != transcript_.end(); ++it) {
+    const auto & word = *it;
+    if (word.is_segment()) {
+      const auto &segment_data = word.get_segment_data();
+      msg.seg_start_words_id.push_back(msg.words.size());
+      msg.seg_start_time.push_back(chrono_to_ros_msg(segment_data->segment_start_));
+      msg.seg_duration_ms.push_back(segment_data->duration_.count());
+      words_skipped++;
+    } else {
+      msg.words.push_back(word.get());
+      msg.probs.push_back(word.get_prob());
+      msg.occ.push_back(word.get_occurrences());
+    }
+  }
+  msg.active_index = transcript_.get_stale_word_id() - words_skipped;
 }
 
 void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
@@ -487,40 +517,59 @@ void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
 }
 
 void TranscriptManagerNode::print_new_words_(const std::vector<Word> &new_words,
-                                            const std::vector<SegmentMetaData> &new_segments) {
+                                            const std::vector<SegmentMetaData> &/*new_segments*/) {
   std::string print_str;
-  for (const auto &seg : new_segments) {
-    print_str += "[" + std::to_string(seg.start_time_) + 
-                " - " + std::to_string(seg.end_time_) + "]:  ";
-    bool first_print = true;
-    for (int i = seg.word_array_start_idx_; i < (seg.word_array_start_idx_ + seg.len_); ++i) {
-      // RCLCPP_INFO(node_ptr_->get_logger(), "i: %d.  word :  '%s'", i, new_words[i].get().c_str());
-      if (new_words[i].is_segment()) {
-        continue;
-      }
-      if (!first_print) {
-        print_str += "||";
-      }
-      print_str += new_words[i].get();
-      first_print = false;
+  bool first_print = true;
+  for (size_t i = 0; i < new_words.size();  ++i) {
+    const auto &word = new_words[i];
+    if (word.is_segment()) {
+      const auto seg = word.get_segment_data();
+      print_str += "\n[" + std::to_string(seg->start_time_) + 
+                  " - " + std::to_string(seg->end_time_) + "]:  ";
+      first_print = true;
+      continue;
     }
-    print_str += "\n";
+    if (!first_print) {
+      print_str += "||";
+    }
+    print_str += word.get();
+    first_print = false;
   }
+  print_str += "\n";
   RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
 }
 
 
 
-std::pair<std::vector<Word>, std::vector<SegmentMetaData>> 
-                  TranscriptManagerNode::deserialize_msg_(const WhisperTokens::SharedPtr &msg) {
+Transcript::WordsAndSegments 
+    TranscriptManagerNode::deserialize_msg_(const WhisperTokens::SharedPtr &msg) {
   std::vector<Word> words;
   std::vector<SegmentMetaData> segments;
+  auto msg_start_time = ros_msg_to_chrono(msg->stamp);
+
+  {
+    std::time_t time_t_val = std::chrono::system_clock::to_time_t(msg_start_time);
+    auto duration_since_epoch = msg_start_time.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch - seconds);
+    std::tm* tm = std::localtime(&time_t_val);
+    RCLCPP_WARN(node_ptr_->get_logger(), "RECIEVED:  %04d-%02d-%02d %02d:%02d:%02d.%03d\n",
+           tm->tm_year + 1900,    // Year
+           tm->tm_mon + 1,        // Month (0-based in tm struct)
+           tm->tm_mday,           // Day
+           tm->tm_hour,           // Hour
+           tm->tm_min,            // Minute
+           tm->tm_sec,            // Second
+           static_cast<int>(milliseconds.count()));  // Milliseconds
+  }
 
   SegmentMetaData segment_wip;
   std::vector<SingleToken> word_wip;
+  int word_array_start_idx_ = 0;
 
   int segment_ptr = 0;
   bool segment_started = false;
+  size_t last_seg_idx = 0;
   for (size_t i=0; i<msg->token_texts.size(); ++i) {
 
     // RCLCPP_INFO(node_ptr_->get_logger(), "i: %ld.  Token:  '%s'", i, msg->token_texts[i].c_str());
@@ -538,10 +587,11 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
 
       // If we are starting on the second segment, fill in information from the previous
       if (segment_ptr >= 1 && segment_started) {
-        segment_wip.len_ = static_cast<int>(words.size()) - segment_wip.word_array_start_idx_;
+        int len = static_cast<int>(words.size()) - word_array_start_idx_;
         // Save the previous segment, reset the wip
         // RCLCPP_INFO(node_ptr_->get_logger(), "Push back Segment with end token:  %s", 
         //                                                   segment_wip.get_data().c_str());
+        words[last_seg_idx].set_len(len);
         segments.push_back(segment_wip);
         segment_wip = SegmentMetaData();
         segment_started = false;
@@ -559,15 +609,25 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
       }
 
       if (segment_tokens > 0) {
-        segment_wip.word_array_start_idx_ = static_cast<int>(words.size());
+        word_array_start_idx_ = static_cast<int>(words.size());
         segment_wip.end_token_ = SingleToken(msg->token_texts[i + segment_tokens - 1], 
                                              msg->token_probs[i + segment_tokens - 1]);
         segment_wip.start_time_ = msg->start_times[segment_ptr];
         segment_wip.end_time_ = msg->end_times[segment_ptr];
+
+        std::chrono::milliseconds start_ms(msg->start_times[segment_ptr]*10);
+        std::chrono::milliseconds end_ms(msg->end_times[segment_ptr]*10);
+        RCLCPP_INFO(node_ptr_->get_logger(), "Start Time:  %ld,  End time:   %ld", 
+                                                      msg->start_times[segment_ptr]*10,
+                                                      msg->end_times[segment_ptr]*10);
+        segment_wip.segment_start_ = msg_start_time + start_ms;
+        segment_wip.duration_ = end_ms - start_ms;
+
         // RCLCPP_INFO(node_ptr_->get_logger(), "Segment end token:  %s", 
         //                                                 segment_wip.get_data().c_str());
         // Push indicator of new segment
-        words.push_back(Word());
+        words.push_back(Word(segment_wip));
+        last_seg_idx = words.size() - 1;
         segment_started = true;
       }
 
@@ -588,8 +648,7 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
     }
 
     if (is_special_token(msg->token_texts, i)) {
-      // Do not add whisper special tokens to transcript
-      // Store as segment data
+      // Skip whisper special tokens (e.g. [_TT_150_])
     }
     else if (my_ispunct(msg->token_texts, i)) {
       // Push back last word
@@ -601,7 +660,7 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
     }
     else if (auto [join, num_tokens] = join_tokens(msg->token_texts, i); join) {
       std::string combined_text = combine_text(msg->token_texts, i, num_tokens);
-      float combined_prob = combine_prob(msg->token_probs, i, num_tokens);
+      float combined_prob = combine_prob(msg->token_probs, i, num_tokens) / num_tokens;
       
       // RCLCPP_INFO(node_ptr_->get_logger(), "Combining next %d tokens-> '%s'", 
       //                                                 num_tokens, combined_text.c_str());
@@ -621,10 +680,11 @@ std::pair<std::vector<Word>, std::vector<SegmentMetaData>>
   // Final segment
   if (segment_started) {
     // Dont subtract one since no new segment began
-    segment_wip.len_ = static_cast<int>(words.size()) - segment_wip.word_array_start_idx_;
+    int len = static_cast<int>(words.size()) - word_array_start_idx_;
     // Save the previous segment, reset the wip
     // RCLCPP_INFO(node_ptr_->get_logger(), "Push back Segment with end token:  %s", 
     //                                                               segment_wip.get_data().c_str());
+    words[last_seg_idx].set_len(len);
     segments.push_back(segment_wip);
   }
 

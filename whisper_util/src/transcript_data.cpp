@@ -58,6 +58,10 @@ void Transcript::run(const Operations &operations, const WordsAndSegments &words
         conflict_merge_word(op.id_ + op_id_offset, words_other, op.other_id_);
         inc_word(op.id_ + op_id_offset);
         break;
+      case OperationType::MERGE_SEGMENTS:
+        merge_word_segments(op.id_ + op_id_offset, words_other, op.other_id_);
+        inc_word(op.id_ + op_id_offset);
+        break;
     }
   }
 }
@@ -109,7 +113,31 @@ void Transcript::conflict_merge_word(const int id,
 }
 
 void Transcript::remove_word(const int id) {
+  printf("Removal of id:  %d -- (stale id:  %d)\n", id,
+                                      stale_id_);
   transcript_.erase(transcript_.begin() + id + stale_id_);
 }
+
+
+void Transcript::merge_word_segments(const int id,
+                  const WordsAndSegments &no_conflict_other,
+                  const int other_id) {
+  // auto word_other = no_conflict_other.first[other_id];
+  // transcript_[id + stale_id_].compare(word_other.get_best_tokens(), word_other.get());
+  transcript_[id + stale_id_].merge_segments(no_conflict_other.first[other_id]);
+}
+
+
+void Transcript::clear_mistakes(const int occurrence_threshold) {
+    Transcript::Operations pending_ops;
+    for (int id = stale_id_; id < static_cast<int>(transcript_.size()); ++id) {
+      if (transcript_[id].get_occurrences() <= occurrence_threshold) {
+        printf("Removed:  %s (%d)\n", transcript_[id].get().c_str(),
+                                      transcript_[id].get_occurrences());
+        pending_ops.push_back({REMOVE, id-stale_id_});
+      }
+    }
+    run(pending_ops);
+  }
 
 } // end of namespace whisper

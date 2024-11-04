@@ -10,6 +10,8 @@
 #include <tuple>
 #include <iomanip>
 #include <sstream>
+#include <optional>
+#include <chrono> // SegmentMetaData
 
 namespace whisper {
 
@@ -80,15 +82,17 @@ public:
 class SegmentMetaData {
 // private:
 public:
-  int word_array_start_idx_;
   int len_;
   SingleToken end_token_;
   int64_t start_time_;
   int64_t end_time_;
 
-  SegmentMetaData(int word_array_start_idx, int len, SingleToken end_token,
+  std::chrono::system_clock::time_point segment_start_;
+  std::chrono::milliseconds duration_;
+
+  SegmentMetaData(int len, SingleToken end_token,
                   int64_t start_time, int64_t end_time)
-      : word_array_start_idx_(word_array_start_idx), len_(len), end_token_(end_token),
+      : len_(len), end_token_(end_token),
         start_time_(start_time), end_time_(end_time) {};
 
   SegmentMetaData()
@@ -96,6 +100,74 @@ public:
   
   std::string get_data() {
     return end_token_.get_data();
+  }
+
+  // Copy constructor
+  SegmentMetaData(const SegmentMetaData& other)
+      : len_(other.len_), end_token_(other.end_token_), 
+      start_time_(other.start_time_), end_time_(other.end_time_),
+      segment_start_(other.segment_start_), duration_(other.duration_) {};
+
+  // Move constructor
+  SegmentMetaData(SegmentMetaData&& other) noexcept
+      : len_(std::move(other.len_)), end_token_(std::move(other.end_token_)), 
+      start_time_(std::move(other.start_time_)), end_time_(std::move(other.end_time_)),
+      segment_start_(std::move(other.segment_start_)), duration_(std::move(other.duration_)) {};
+
+  // Copy assignment operator
+  SegmentMetaData& operator=(const SegmentMetaData& other) {
+    if (this != &other) {
+      len_ = other.len_;
+      end_token_ = other.end_token_;
+      start_time_ = other.start_time_;
+      end_time_ = other.end_time_;
+      segment_start_ = other.segment_start_;
+      duration_ = other.duration_;
+    }
+    return *this;
+  }
+
+  // Move assignment operator
+  SegmentMetaData& operator=(SegmentMetaData&& other) noexcept {
+    if (this != &other) {
+      len_ = std::move(other.len_);
+      end_token_ = std::move(other.end_token_);
+      start_time_ = std::move(other.start_time_);
+      end_time_ = std::move(other.end_time_);
+      segment_start_ = std::move(other.segment_start_);
+      duration_ = std::move(other.duration_);
+    }
+    return *this;
+  }
+
+  // std::string as_str() const {
+  //   std::stringstream ss;
+  //   ss << "start_time_:  " << start_time_;
+  //   ss << ".   end_time_:  " << end_time_;
+  //   ss << ".   len:  " << len_;
+  //   ss << ".   end token:  " << end_token_.get_data();
+  //   return ss.str();
+  // }
+
+  std::string as_str() const {
+    std::stringstream ss;
+    // Convert to time_t for easier formating
+    std::time_t segment_start_time = std::chrono::system_clock::to_time_t(segment_start_);
+    std::chrono::milliseconds ms = 
+                          std::chrono::duration_cast<std::chrono::milliseconds>
+                          (segment_start_.time_since_epoch()) % 1000;
+    ss << "[";
+    ss << std::put_time(std::localtime(&segment_start_time), "%Y-%m-%d %H:%M:%S");
+    ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    ss << "]";
+    ss << " Words:  " << len_;
+    ss << ".  Duration:  " << duration_.count() << "ms";
+    ss << ".   End Token:  " << end_token_.get_data();
+    return ss.str();
+  }
+
+  void set_len(int len) {
+    len_ = len;
   }
 };
 
@@ -114,17 +186,16 @@ class Word {
 private:
   std::vector<std::vector<SingleToken>> word_tokens_;
   std::vector<int> word_occurances_;
-  // SegmentMetaData segment_data_;
   std::vector<bool> word_is_punct_;
   std::vector<float> word_probs_;
-  bool is_segment_;
+  std::optional<SegmentMetaData> segment_data_;
 
   // Calculated and cached
   std::vector<std::string> word_cache_;
   std::vector<std::string> comparable_word_cache_;
 
 public:
-  Word(std::vector<SingleToken> tokens) : is_segment_(false) {
+  Word(std::vector<SingleToken> tokens) {
   	if (tokens.empty()) {
   		throw std::runtime_error("Cannot initialze word vec with no tokens.");
   	} else {
@@ -132,12 +203,13 @@ public:
     }
   };
 
-  Word(SingleToken token, bool is_punct) : is_segment_(false) {
+  Word(SingleToken token, bool is_punct) {
     add({token}, is_punct);
   };
 
-  Word() : is_segment_(true) {
-    add({{"", 0.0}}, false);
+  Word(const SegmentMetaData &segment_data) : segment_data_(segment_data) {
+    // word_occurances[0] is overloaded to indicate segment_occurances
+    add({{"", 1.0}}, false);
   };
 
   size_t size() const {
@@ -145,7 +217,7 @@ public:
   }
 
   bool is_segment() const {
-    return is_segment_;
+    return segment_data_.has_value();
   }
 
   bool is_punct() const {
@@ -170,19 +242,23 @@ public:
     word_tokens_.clear();
     word_occurances_.clear();
     word_is_punct_.clear();
-    word_cache_.clear();
     word_probs_.clear();
+    word_cache_.clear();
     comparable_word_cache_.clear();
+    segment_data_.reset();
   }
 
   std::string get_comparable() const {
-    if (is_punct() || is_segment_ || word_occurances_[0] <= 0) {
+    if (is_punct() || is_segment() || word_occurances_[0] <= 0) {
       return "";
     }
     return comparable_word_cache_[0];
   }
 
   std::string get() const {
+    if (is_segment()) {
+      return " [SEGMENT(" + segment_data_->end_token_.get_data() + ")]";
+    }
     return word_cache_[0];
   }
   
@@ -202,8 +278,20 @@ public:
   }
 
   std::vector<SingleToken> get_best_tokens() const {
+    // TODO return itterator
     return word_tokens_[0];
   }
+
+  void set_len(int len) {
+    if (is_segment()) {
+      segment_data_->set_len(len);
+    }
+  }
+
+  std::optional<SegmentMetaData> get_segment_data() const {
+    return segment_data_;
+  }
+
 
   // bool empty() const {
   //   return word_tokens.empty() || word_tokens[0].empty();
@@ -228,13 +316,11 @@ public:
   void build_cache() {
     std::string word;
     float prob = 0.;
-    int prob_count = 0;
     for (auto& token : word_tokens_[word_tokens_.size()-1]) {
       word += token.get_data();
       prob += token.get_prob();
-      prob_count++;
     }
-    prob /= prob_count;
+    prob /= word_tokens_[word_tokens_.size()-1].size();
     word_cache_.push_back(word);
     word_probs_.push_back(prob);
     comparable_word_cache_.push_back(compute_comparable(word));
@@ -305,6 +391,29 @@ public:
         }
       }
     }
+  }
+
+  void merge_segments(const Word &no_conflict_other) {
+    const auto other_data = no_conflict_other.get_segment_data();
+    // printf("This segment data:  \n%s\n", segment_data_->as_str().c_str());
+    // printf("Other segment data:  \n%s\n", other_data->as_str().c_str());
+
+    // Overwrite -- Replace with other segment data
+    segment_data_->end_token_ = other_data->end_token_;
+    segment_data_->end_time_ = other_data->end_time_;
+    segment_data_->start_time_ = other_data->start_time_;
+    segment_data_->segment_start_ = other_data->segment_start_;
+    segment_data_->duration_ = other_data->duration_;
+
+    // Increase likelyhood of the segmention
+    word_occurances_[0]++;
+  }
+
+  std::string get_segment_data_str() const {
+    if (!is_segment()) {
+      return "";
+    }
+    return segment_data_->as_str();
   }
 
   std::vector<int> get_top_n_ids(const int min_count) const {
@@ -402,6 +511,7 @@ private:
  * @brief A data maanger.  
  */
 class Transcript {
+public:
   using WordsAndSegments = std::pair<std::vector<Word>, std::vector<SegmentMetaData>>;
 
 private:
@@ -411,7 +521,9 @@ private:
   int last_segment_id_;
 
 public:
-  enum OperationType { INCREMENT, DECREMENT, INSERT, CONFLICT, REMOVE, MATCHED_WORD};
+  enum OperationType { INCREMENT, DECREMENT, INSERT, 
+                      CONFLICT, REMOVE, 
+                      MATCHED_WORD, MERGE_SEGMENTS};
   struct Operation {
     const OperationType op_type_;
     const int id_;
@@ -421,7 +533,8 @@ public:
                     op_type_(op_type), id_(id), other_id_(-1) {
       if (op_type_ == INSERT || 
           op_type_ == CONFLICT ||
-          op_type_ == MATCHED_WORD) {
+          op_type_ == MATCHED_WORD ||
+          op_type_ == MERGE_SEGMENTS) {
         throw std::runtime_error("Missing argument on Operation initialization.");
       }
     }
@@ -439,6 +552,9 @@ public:
   // run subset of operations
   void run(const Operations &operations);
   void insert_word(const int id,
+                    const WordsAndSegments &new_words,
+                    const int new_word_id);
+  void merge_word_segments(const int id,
                     const WordsAndSegments &new_words,
                     const int new_word_id);
   void inc_word(const int id);
@@ -474,20 +590,34 @@ public:
     return stale_id_;
   }
 
-  void set_stale_word_id(int stale_id) {
+  void set_stale_word_id(const int stale_id) {
     stale_id_ = stale_id;
   }
 
-  void clear_mistakes(int occurrence_threshold) {
-    Transcript::Operations pending_ops;
-    for (int id = stale_id_; id < static_cast<int>(transcript_.size()); ++id) {
-      if (transcript_[id].get_occurrences() <= occurrence_threshold) {
-        // printf("Removed:  %s (%d)\n", transcript_[id].get().c_str(),
-        //                               transcript_[id].get_occurrences());
-        pending_ops.push_back({REMOVE, id});
-      }
+  void clear_mistakes(const int occurrence_threshold);
+
+  // Provide access to the const iterator
+  using const_iterator = typename std::vector<Word>::const_iterator;
+  const_iterator begin() const { return transcript_.cbegin(); }
+  const_iterator end() const { return transcript_.cend(); }
+
+  std::string get_print_str() {
+    std::string print_str;
+    // for (const auto & word : transcript_) {
+    for (size_t i = 0; i < transcript_.size(); ++i) {
+      const auto &word = transcript_[i];
+      print_str += "'";
+      print_str += word.get();
+      print_str += "'";
+      print_str += "(";
+      print_str += std::to_string(i);
+      print_str += "-";
+      print_str += std::to_string(word.get_occurrences());
+      print_str += "/";
+      print_str += std::to_string(word.get_prob());
+      print_str += ")";
     }
-    run(pending_ops);
+    return print_str;
   }
 };
 

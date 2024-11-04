@@ -13,6 +13,7 @@
 // #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+#include <builtin_interfaces/msg/time.hpp>
 // #include "std_msgs/msg/int16_multi_array.hpp"
 
 #include "whisper_idl/action/inference.hpp"
@@ -23,6 +24,32 @@
 #include "whisper_util/audio_buffers.hpp"
 
 namespace whisper {
+
+inline std::chrono::system_clock::time_point ros_msg_to_chrono(
+                      const builtin_interfaces::msg::Time& ros_time) {
+  // Convert ROS time (seconds and nanoseconds) to a std::chrono::duration
+  std::chrono::seconds sec(ros_time.sec);
+  std::chrono::nanoseconds nsec(ros_time.nanosec);
+  std::chrono::system_clock::duration total_duration = sec + nsec;
+
+  std::chrono::system_clock::time_point time_point(total_duration);
+  return time_point;
+};
+
+inline builtin_interfaces::msg::Time chrono_to_ros_msg(
+                      const std::chrono::system_clock::time_point& timestamp) {
+  builtin_interfaces::msg::Time ros_time;
+
+  std::chrono::system_clock::duration duration_since_epoch = timestamp.time_since_epoch();
+  std::chrono::seconds sec = 
+    std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
+  std::chrono::nanoseconds nano = 
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch - sec);
+
+  ros_time.sec = sec.count();
+  ros_time.nanosec = nano.count();
+  return ros_time;
+};
 
 class TranscriptManagerNode {
   using Inference = whisper_idl::action::Inference;
@@ -41,8 +68,7 @@ protected:
   // audio subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
-  std::pair<std::vector<Word>, std::vector<SegmentMetaData>> 
-                              deserialize_msg_(const WhisperTokens::SharedPtr &msg);
+  Transcript::WordsAndSegments deserialize_msg_(const WhisperTokens::SharedPtr &msg);
   void print_msg_(const WhisperTokens::SharedPtr &msg);
   void print_new_words_(const std::vector<Word> &new_words,
                           const std::vector<SegmentMetaData> &new_segments);
@@ -69,6 +95,8 @@ protected:
   void merge_one_(const WordsAndSegments &words_and_segments);
   // void _backup_merge_one_(const WordsAndSegments &words_and_segments);
   Transcript transcript_;
+
+  void serialize_transcript_(AudioTranscript &msg);
 
   // LCS Hyperparameter
   int allowed_gaps;
