@@ -460,7 +460,7 @@ void TranscriptManagerNode::print_timestamp_(std::chrono::system_clock::time_poi
         // last segment
         end_token_id = msg->token_texts.size()-1;
       } else {
-        end_token_id = static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr+1]);
+        end_token_id = static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr+1] - 1);
       }
       SingleToken end_token(msg->token_texts[end_token_id], msg->token_probs[end_token_id]);
 
