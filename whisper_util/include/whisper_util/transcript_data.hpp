@@ -80,74 +80,35 @@ public:
  * @brief Store metadata about the segment.
  */
 class SegmentMetaData {
-// private:
-public:
-  int len_;
+private:
   SingleToken end_token_;
-  int64_t start_time_;
-  int64_t end_time_;
-
-  std::chrono::system_clock::time_point segment_start_;
   std::chrono::milliseconds duration_;
+  std::chrono::system_clock::time_point segment_start_;
 
-  SegmentMetaData(int len, SingleToken end_token,
-                  int64_t start_time, int64_t end_time)
-      : len_(len), end_token_(end_token),
-        start_time_(start_time), end_time_(end_time) {};
+public:
 
-  SegmentMetaData()
-      : end_token_({"", 0.}) {};
-  
-  std::string get_data() {
-    return end_token_.get_data();
+  SegmentMetaData(const SingleToken& end_token, 
+                  std::chrono::milliseconds duration,
+                  std::chrono::system_clock::time_point segment_start)
+        : end_token_(end_token), duration_(duration), segment_start_(segment_start) {};
+
+
+  SingleToken get_end_token() const { return end_token_; };
+  std::chrono::milliseconds get_duration() const { return duration_; };
+  std::chrono::system_clock::time_point get_start() const { return segment_start_; };
+
+  void set_end_token(const SingleToken end_token) { end_token_ = end_token; };
+  void set_duration(const std::chrono::milliseconds duration) { duration_ = duration; };
+  void set_start(const std::chrono::system_clock::time_point segment_start) 
+                                                  { segment_start_ = segment_start; };
+
+  std::string get_end_token_data() const { return end_token_.get_data(); };
+
+  void overwrite(const SegmentMetaData &other) {
+    end_token_ = other.get_end_token();
+    duration_ = other.get_duration();
+    segment_start_ = other.get_start();
   }
-
-  // Copy constructor
-  SegmentMetaData(const SegmentMetaData& other)
-      : len_(other.len_), end_token_(other.end_token_), 
-      start_time_(other.start_time_), end_time_(other.end_time_),
-      segment_start_(other.segment_start_), duration_(other.duration_) {};
-
-  // Move constructor
-  SegmentMetaData(SegmentMetaData&& other) noexcept
-      : len_(std::move(other.len_)), end_token_(std::move(other.end_token_)), 
-      start_time_(std::move(other.start_time_)), end_time_(std::move(other.end_time_)),
-      segment_start_(std::move(other.segment_start_)), duration_(std::move(other.duration_)) {};
-
-  // Copy assignment operator
-  SegmentMetaData& operator=(const SegmentMetaData& other) {
-    if (this != &other) {
-      len_ = other.len_;
-      end_token_ = other.end_token_;
-      start_time_ = other.start_time_;
-      end_time_ = other.end_time_;
-      segment_start_ = other.segment_start_;
-      duration_ = other.duration_;
-    }
-    return *this;
-  }
-
-  // Move assignment operator
-  SegmentMetaData& operator=(SegmentMetaData&& other) noexcept {
-    if (this != &other) {
-      len_ = std::move(other.len_);
-      end_token_ = std::move(other.end_token_);
-      start_time_ = std::move(other.start_time_);
-      end_time_ = std::move(other.end_time_);
-      segment_start_ = std::move(other.segment_start_);
-      duration_ = std::move(other.duration_);
-    }
-    return *this;
-  }
-
-  // std::string as_str() const {
-  //   std::stringstream ss;
-  //   ss << "start_time_:  " << start_time_;
-  //   ss << ".   end_time_:  " << end_time_;
-  //   ss << ".   len:  " << len_;
-  //   ss << ".   end token:  " << end_token_.get_data();
-  //   return ss.str();
-  // }
 
   std::string as_str() const {
     std::stringstream ss;
@@ -159,19 +120,14 @@ public:
     ss << "[";
     ss << std::put_time(std::localtime(&segment_start_time), "%Y-%m-%d %H:%M:%S");
     ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-    ss << "]";
-    ss << " Words:  " << len_;
-    ss << ".  Duration:  " << duration_.count() << "ms";
-    ss << ".   End Token:  " << end_token_.get_data();
+    ss << " (";
+    ss << duration_.count() << " ms";
+    ss << ")]: ";
+    // ss << "Duration:  " << duration_.count() << "ms.  ";
+    // ss << "End Token:  " << end_token_.get_data();
     return ss.str();
   }
-
-  void set_len(int len) {
-    len_ = len;
-  }
 };
-
-
 
 /**
  * @brief A vector of tokens that form a word.  
@@ -230,6 +186,9 @@ public:
 
   void dec_best() {
     word_occurances_[0]--;
+    if (is_segment()) {
+      return;
+    }
     // Check for swaps
     for (size_t i = 1; i < word_occurances_.size(); ++i) {
       if (word_occurances_[0] < word_occurances_[i]) {
@@ -257,7 +216,7 @@ public:
 
   std::string get() const {
     if (is_segment()) {
-      return " [SEGMENT(" + segment_data_->end_token_.get_data() + ")]";
+      return " [SEGMENT(" + segment_data_->get_end_token_data() + ")]";
     }
     return word_cache_[0];
   }
@@ -278,32 +237,13 @@ public:
   }
 
   std::vector<SingleToken> get_best_tokens() const {
-    // TODO return itterator
+    // TODO return iterator
     return word_tokens_[0];
-  }
-
-  void set_len(int len) {
-    if (is_segment()) {
-      segment_data_->set_len(len);
-    }
   }
 
   std::optional<SegmentMetaData> get_segment_data() const {
     return segment_data_;
   }
-
-
-  // bool empty() const {
-  //   return word_tokens.empty() || word_tokens[0].empty();
-  // }
-
-  // void add(std::vector<SingleToken> new_word) {
-  //   // TODO:  Insert in sorted set
-  //   word_tokens_.push_back(new_word);
-  //   word_occurances_.push_back(1);
-  //   word_is_punct_.push_back(false);
-  //   build_cache();
-  // }
 
   void add(std::vector<SingleToken> new_word, bool is_punct) {
     // TODO:  Insert in sorted set
@@ -368,6 +308,10 @@ public:
   // }
 
   void compare(const Word &no_conflict_other) {
+    if (is_segment() || no_conflict_other.is_segment()) {
+      return;
+    }
+
     // printf("\nFIXED CONFLICT Between: '%s' and '%s'.   ", get().c_str(), no_conflict_other.get().c_str());
     auto [match_found, match_idx] = get_match(no_conflict_other.get());
     if (match_found) {
@@ -383,27 +327,23 @@ public:
     } else {
       // printf("No match found... Adding as new word\n");
       add(no_conflict_other.get_best_tokens(), no_conflict_other.is_punct());
-      // Re-run compare(..), consider swapping
-      auto [match_found_new, match_idx_new] = get_match(no_conflict_other.get());
-      if (match_found_new) {
-        if (word_occurances_[match_idx_new] >= word_occurances_[0]) {
-          swap(match_idx_new);
-        }
+      // Consider swapping the new entry
+      if (word_tokens_.size() > 1 && word_occurances_[0] == 1) {
+        swap(word_tokens_.size()-1);
       }
     }
   }
 
   void merge_segments(const Word &no_conflict_other) {
+    if (! is_segment() || !no_conflict_other.is_segment()) {
+      return;
+    }
+
     const auto other_data = no_conflict_other.get_segment_data();
     // printf("This segment data:  \n%s\n", segment_data_->as_str().c_str());
     // printf("Other segment data:  \n%s\n", other_data->as_str().c_str());
 
-    // Overwrite -- Replace with other segment data
-    segment_data_->end_token_ = other_data->end_token_;
-    segment_data_->end_time_ = other_data->end_time_;
-    segment_data_->start_time_ = other_data->start_time_;
-    segment_data_->segment_start_ = other_data->segment_start_;
-    segment_data_->duration_ = other_data->duration_;
+    segment_data_->overwrite(*other_data);
 
     // Increase likelyhood of the segmention
     word_occurances_[0]++;
@@ -426,26 +366,6 @@ public:
     return top_n;
   }
 
-  // std::string get_print_str(const int min_count) const {
-  //   auto ids = get_top_n_ids(min_count);
-  //   if (ids.size() <= 1) {
-  //     return get();
-  //   }
-  //   std::string str = "_{";
-  //   bool first_run = true;
-  //   for (const auto id : ids) {
-  //     if (!first_run) {
-  //       str += " | ";
-  //     }
-  //     str += word_cache_[id];
-  //     str += " (";
-  //     str += std::to_string(word_occurances_[id]);
-  //     str += ")";
-  //     first_run = false;
-  //   }
-  //   str += "}_";
-  //   return str;
-  // }
   std::string get_print_str(const int min_count) const {
     auto ids = get_top_n_ids(min_count);
     if (ids.size() <= 1) {
@@ -511,16 +431,17 @@ private:
  * @brief A data maanger.  
  */
 class Transcript {
-public:
-  using WordsAndSegments = std::pair<std::vector<Word>, std::vector<SegmentMetaData>>;
-
 private:
   std::vector<Word> transcript_;
-  std::vector<SegmentMetaData> segments_;
+  std::vector<int> segment_ids;
   int stale_id_;
-  int last_segment_id_;
 
 public:
+  Transcript(): stale_id_(0) {};
+
+  // 
+  // Operations that can be performed on the transcript
+  // 
   enum OperationType { INCREMENT, DECREMENT, INSERT, 
                       CONFLICT, REMOVE, 
                       MATCHED_WORD, MERGE_SEGMENTS};
@@ -543,31 +464,29 @@ public:
   };
   using Operations = std::vector<Operation>;
 
-  void push_back(const WordsAndSegments &words_and_segments);
-
-  // Standard Operations
-  // void run_op(const Operation operation, const WordsAndSegments &words_other);
-  // run all operations
-  void run(const Operations &operations, const WordsAndSegments &words_other);
-  // run subset of operations
-  void run(const Operations &operations);
-  void insert_word(const int id,
-                    const WordsAndSegments &new_words,
-                    const int new_word_id);
-  void merge_word_segments(const int id,
-                    const WordsAndSegments &new_words,
-                    const int new_word_id);
   void inc_word(const int id);
   void dec_word(const int id);
   void remove_word(const int id);
-  // void compare_inc_word(const int id,
-  //                     const std::vector<WordsAndSegments> &others,
-  //                     const int other_id);
+  void insert_word(const int id,
+                    const std::vector<Word> &new_words,
+                    const int new_word_id);
   void conflict_merge_word(const int id,
-                      const WordsAndSegments &others,
+                      const std::vector<Word> &others,
                       const int other_id);
+  void merge_word_segments(const int id,
+                    const std::vector<Word> &new_words,
+                    const int new_word_id);
 
-  Transcript(): stale_id_(0), last_segment_id_(-1) {};
+
+  // run all operations
+  void run(const Operations &operations, const std::vector<Word> &words_other);
+  // run subset of operations (inc, dec, remove)
+  void run(const Operations &operations);
+
+  // 
+  // Other Trancript Functions
+  // 
+  void push_back(const std::vector<Word> &words_and_segments);
 
   bool empty() const {
     return transcript_.empty();
@@ -578,7 +497,7 @@ public:
   }
 
   std::vector<Word> get_words_splice() {
-    // TODO:  return itterator
+    // TODO:  return iterator
     return std::vector<Word>(transcript_.begin() + stale_id_, transcript_.end());
   }
 
@@ -596,6 +515,11 @@ public:
 
   void clear_mistakes(const int occurrence_threshold);
 
+  // TODO:
+  // void align_segments();
+
+  // void update_stale_id(std::chrono::system_clock::time_point cur_time);
+
   // Provide access to the const iterator
   using const_iterator = typename std::vector<Word>::const_iterator;
   const_iterator begin() const { return transcript_.cbegin(); }
@@ -611,9 +535,9 @@ public:
       print_str += "'";
       print_str += "(";
       print_str += std::to_string(i);
-      print_str += "-";
+      print_str += "|";
       print_str += std::to_string(word.get_occurrences());
-      print_str += "/";
+      print_str += "|";
       print_str += std::to_string(word.get_prob());
       print_str += ")";
     }
@@ -699,42 +623,6 @@ inline std::pair<bool, int> join_tokens(const std::vector<std::string> &tokens, 
   return {false, 0};
 }
 
-
-// inline std::pair<bool, int> join_tokens(const std::vector<std::string> &tokens, const int idx) {
-//   // Check if, starting from the idx, the tokens are a bracket which can be combined or removed
-//   //   Return:
-//   //      bool -- Tokens start with bracket (can be combined)
-//   //      int  -- Number of tokens to combine
-//   const std::vector<std::pair<std::string, std::string>> combine_brackets = {
-//       {"[", "]"}, {" [", "]"},
-//       {"{", "}"}, {" {", "}"},
-//       {"(", ")"}, {" (", ")"}
-//   };
-//   // Set a limit on how many tokens can be within brackets
-//   const int max_allowed_tokens_to_combine = 10;
-
-//   if (idx < 0 || tokens.size() <= static_cast<size_t>(idx)) {
-//     return {false, 0};
-//   }
-
-//   // Try to combine tokens
-//   for (auto &[start, end] : combine_brackets) { 
-//     if (tokens[idx].size() >= start.size() && tokens[idx].substr(0, start.size()) == start) {
-//       int end_idx = idx + 1;
-//       while (end_idx < static_cast<int>(tokens.size()) && (end_idx-idx) 
-//                                             <= max_allowed_tokens_to_combine) {
-//         if (tokens[end_idx].size() >= end.size() && tokens[end_idx].substr(0, end.size()) == end) {
-//           return {true, end_idx - idx + 1};
-//         }
-//         end_idx++;
-//       }
-//       // We found the start but not the end, "combine" current token with itself
-//       return {true, 1};
-//     }
-//   }
-//   return {false, 0};
-// }
-
 inline std::string combine_text(const std::vector<std::string> &tokens, 
                                                       const int idx, const int num) {
   if (idx < 0 || tokens.size() <= static_cast<size_t>(idx)) {
@@ -761,18 +649,8 @@ inline float combine_prob(const std::vector<float> &probs, const int idx, const 
   for (auto i = idx; i < idx + num; ++i) {
     ret += probs[i];
   }
-  return ret;
+  return ret / num;
 }
-
-
-
-
-
-
-
-
-
-
 
 } // end of namespace whisper
 #endif // WHISPER_UTIL__TRANSCRIPT_DATA_HPP_

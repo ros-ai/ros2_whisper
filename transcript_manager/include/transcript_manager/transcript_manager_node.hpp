@@ -56,7 +56,8 @@ class TranscriptManagerNode {
   using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
   using WhisperTokens = whisper_idl::msg::WhisperTokens;
   using AudioTranscript = whisper_idl::msg::AudioTranscript;
-  using WordsAndSegments = std::pair<std::vector<Word>, std::vector<SegmentMetaData>>;
+
+  const int whisper_ts_to_ms_ratio = 10;
 
 
 public:
@@ -68,10 +69,10 @@ protected:
   // audio subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
-  Transcript::WordsAndSegments deserialize_msg_(const WhisperTokens::SharedPtr &msg);
+  std::vector<Word> deserialize_msg_(const WhisperTokens::SharedPtr &msg);
   void print_msg_(const WhisperTokens::SharedPtr &msg);
-  void print_new_words_(const std::vector<Word> &new_words,
-                          const std::vector<SegmentMetaData> &new_segments);
+  void print_new_words_(const std::vector<Word> &new_words_and_segments);
+  void print_timestamp_(std::chrono::system_clock::time_point timestamp);
 
   // action server
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
@@ -90,10 +91,9 @@ protected:
   rclcpp::Publisher<AudioTranscript>::SharedPtr transcript_pub_;
 
   // Data
-  std::unique_ptr<ThreadSafeRing<WordsAndSegments>> incoming_queue_;
+  std::unique_ptr<ThreadSafeRing<std::vector<Word>>> incoming_queue_;
   void clear_queue_();
-  void merge_one_(const WordsAndSegments &words_and_segments);
-  // void _backup_merge_one_(const WordsAndSegments &words_and_segments);
+  void merge_one_(const std::vector<Word> &new_words);
   Transcript transcript_;
 
   void serialize_transcript_(AudioTranscript &msg);

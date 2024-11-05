@@ -199,8 +199,7 @@ void InferenceNode::on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::
                 audio_buff_end_s, audio_buff_end_ns,
                 cur_s, cur_ns,
                 audio_buff_len_ms.count(), msg_duration_ms.count(),
-                negative ? "-": "", elapsed_count);  
-    
+                negative ? "-": "", elapsed_count);
   }
 }
 
@@ -313,6 +312,23 @@ whisper_idl::msg::WhisperTokens InferenceNode::create_message_() {
 bool InferenceNode::run_inference_(whisper_idl::msg::WhisperTokens &result) {
   // const auto &data = audio_ring_->peak();
   const auto& [data, timestamp] = audio_ring_->peak();
+
+  // {
+  //   std::time_t time_t_val = std::chrono::system_clock::to_time_t(timestamp);
+  //   auto duration_since_epoch = timestamp.time_since_epoch();
+  //   auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
+  //   auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch - seconds);
+  //   std::tm* tm = std::localtime(&time_t_val);
+  //   RCLCPP_WARN(node_ptr_->get_logger(), "%04d-%02d-%02d %02d:%02d:%02d.%03d\n",
+  //          tm->tm_year + 1900,    // Year
+  //          tm->tm_mon + 1,        // Month (0-based in tm struct)
+  //          tm->tm_mday,           // Day
+  //          tm->tm_hour,           // Hour
+  //          tm->tm_min,            // Minute
+  //          tm->tm_sec,            // Second
+  //          static_cast<int>(milliseconds.count()));  // Milliseconds
+  // }
+
   auto [sec, nanosec] = chrono_time_to_ros(timestamp);
   result.stamp.sec = sec;
   result.stamp.nanosec = nanosec;
