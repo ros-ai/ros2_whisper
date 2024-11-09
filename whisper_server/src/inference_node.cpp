@@ -83,7 +83,7 @@ void InferenceNode::timer_callback()
 
       auto& clk = *node_ptr_->get_clock();
       RCLCPP_INFO_THROTTLE(node_ptr_->get_logger(), clk, 5000,
-                        "Audio Lag:   %ld (ms).",
+                        "Whisper Induced Lag:   %ld (ms).",
                         msg.inference_duration);
     }
   }

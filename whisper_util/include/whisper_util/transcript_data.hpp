@@ -127,6 +127,22 @@ public:
     // ss << "End Token:  " << end_token_.get_data();
     return ss.str();
   }
+
+  std::string as_timestamp_str() const {
+    std::stringstream ss;
+    // Convert to time_t for easier formating
+    std::time_t segment_start_time = std::chrono::system_clock::to_time_t(segment_start_);
+    std::chrono::milliseconds ms = 
+                          std::chrono::duration_cast<std::chrono::milliseconds>
+                          (segment_start_.time_since_epoch()) % 1000;
+    ss << "[";
+    ss << std::put_time(std::localtime(&segment_start_time), "%Y-%m-%d %H:%M:%S");
+    ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+    ss << "]";
+    // ss << "Duration:  " << duration_.count() << "ms.  ";
+    // ss << "End Token:  " << end_token_.get_data();
+    return ss.str();
+  }
 };
 
 /**
@@ -328,7 +344,7 @@ public:
       // printf("No match found... Adding as new word\n");
       add(no_conflict_other.get_best_tokens(), no_conflict_other.is_punct());
       // Consider swapping the new entry
-      if (word_tokens_.size() > 1 && word_occurances_[0] == 1) {
+      if (word_tokens_.size() > 1 && word_occurances_[0] <= 1) {
         swap(word_tokens_.size()-1);
       }
     }
@@ -347,6 +363,10 @@ public:
 
     // Increase likelyhood of the segmention
     word_occurances_[0]++;
+  }
+
+  void overwrite(const Word &no_conflict_other) {
+    segment_data_->overwrite(*no_conflict_other.get_segment_data());
   }
 
   std::string get_segment_data_str() const {
@@ -424,6 +444,19 @@ private:
       }
     }
   }
+
+public:
+  SingleToken get_end_token() const { return segment_data_->get_end_token(); };
+  std::chrono::milliseconds get_duration() const { return segment_data_->get_duration(); };
+  std::chrono::system_clock::time_point get_start() const { return segment_data_->get_start(); };
+
+  void set_end_token(const SingleToken end_token) { segment_data_->set_end_token(end_token); };
+  void set_duration(const std::chrono::milliseconds duration) { segment_data_->set_duration(duration); };
+  void set_start(const std::chrono::system_clock::time_point segment_start) 
+                                                  { segment_data_->set_start(segment_start); };
+
+  std::string as_str() const { return segment_data_->as_str(); };
+  std::string as_timestamp_str() const { return segment_data_->as_timestamp_str(); };
 };
 
 
@@ -433,7 +466,7 @@ private:
 class Transcript {
 private:
   std::vector<Word> transcript_;
-  std::vector<int> segment_ids;
+  std::vector<int> segment_ids; // Sorted Array of transcript_ indicies
   int stale_id_;
 
 public:
@@ -442,9 +475,7 @@ public:
   // 
   // Operations that can be performed on the transcript
   // 
-  enum OperationType { INCREMENT, DECREMENT, INSERT, 
-                      CONFLICT, REMOVE, 
-                      MATCHED_WORD, MERGE_SEGMENTS};
+  enum OperationType { INCREMENT, DECREMENT, INSERT, DELETE, MERGE, CONFLICT};
   struct Operation {
     const OperationType op_type_;
     const int id_;
@@ -452,10 +483,9 @@ public:
 
     Operation(const OperationType op_type, const int id) : 
                     op_type_(op_type), id_(id), other_id_(-1) {
-      if (op_type_ == INSERT || 
-          op_type_ == CONFLICT ||
-          op_type_ == MATCHED_WORD ||
-          op_type_ == MERGE_SEGMENTS) {
+      if  ( !(op_type_ == INCREMENT || 
+              op_type_ == DECREMENT ||
+              op_type_ == DELETE) ) {
         throw std::runtime_error("Missing argument on Operation initialization.");
       }
     }
@@ -466,22 +496,27 @@ public:
 
   void inc_word(const int id);
   void dec_word(const int id);
-  void remove_word(const int id);
+  void del_word(const int id);
   void insert_word(const int id,
                     const std::vector<Word> &new_words,
                     const int new_word_id);
-  void conflict_merge_word(const int id,
-                      const std::vector<Word> &others,
-                      const int other_id);
-  void merge_word_segments(const int id,
+  void conflict_word(const int id,
+                    const std::vector<Word> &new_words,
+                    const int other_id);
+  void del_segment(const int id);
+  void insert_segment(const int id,
+                    const std::vector<Word> &new_words,
+                    const int new_word_id);
+  void merge_segments(const int id,
                     const std::vector<Word> &new_words,
                     const int new_word_id);
 
-
   // run all operations
+  void run(const Operations &operations, 
+          const std::vector<Word> &words_other,
+          const std::vector<std::tuple<bool, int, bool, int>>  &segment_correspondences);
   void run(const Operations &operations, const std::vector<Word> &words_other);
-  // run subset of operations (inc, dec, remove)
-  void run(const Operations &operations);
+  void run(const Operations &operations); // run subset
 
   // 
   // Other Trancript Functions
@@ -515,9 +550,12 @@ public:
 
   void clear_mistakes(const int occurrence_threshold);
 
-  // TODO:
-  // void align_segments();
+  // void group_merge_segments(
+  //       const std::vector<Word> &new_words,
+  //       const std::vector<std::tuple<bool, int, bool, int>> segment_correspondences);
 
+  // TODO:
+  // std::pair<bool, int> close_match();
   // void update_stale_id(std::chrono::system_clock::time_point cur_time);
 
   // Provide access to the const iterator
@@ -525,23 +563,51 @@ public:
   const_iterator begin() const { return transcript_.cbegin(); }
   const_iterator end() const { return transcript_.cend(); }
 
+  // std::string get_print_str() {
+  //   std::string print_str;
+  //   // for (const auto & word : transcript_) {
+  //   for (size_t i = 0; i < transcript_.size(); ++i) {
+  //     const auto &word = transcript_[i];
+  //     print_str += "'";
+  //     print_str += word.get();
+  //     print_str += "'";
+  //     print_str += "(";
+  //     print_str += std::to_string(i);
+  //     print_str += "|";
+  //     print_str += std::to_string(word.get_occurrences());
+  //     print_str += "|";
+  //     print_str += std::to_string(word.get_prob());
+  //     print_str += ")";
+  //   }
+  //   return print_str;
+  // }
   std::string get_print_str() {
-    std::string print_str;
+    std::string print_str = "\033[34m";
     // for (const auto & word : transcript_) {
     for (size_t i = 0; i < transcript_.size(); ++i) {
       const auto &word = transcript_[i];
-      print_str += "'";
+      if ( word.is_segment() ) {
+        print_str += "\n";  
+        print_str += word.as_str();
+        continue;
+      }
       print_str += word.get();
-      print_str += "'";
-      print_str += "(";
-      print_str += std::to_string(i);
-      print_str += "|";
-      print_str += std::to_string(word.get_occurrences());
-      print_str += "|";
-      print_str += std::to_string(word.get_prob());
-      print_str += ")";
     }
+    print_str += "\033[0m";
     return print_str;
+  }
+
+private:
+  inline bool id_check(const int &id, const size_t &max_val) {
+    if (id < 0 || static_cast<size_t>(id) >= max_val) {
+      fprintf(stderr, "Failed bounds check on run op. id: %d, max_val:  %ld\n", id, max_val);
+      return false;
+    }
+    return true;
+  }
+
+  inline bool is_seg(const int &id, const std::vector<Word> &words) {
+    return words[id].is_segment();
   }
 };
 

@@ -37,7 +37,7 @@ void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr ms
   // print_timestamp_(ros_msg_to_chrono(msg->stamp));
   // print_msg_(msg);
   const auto &words = deserialize_msg_(msg);
-  print_new_words_(words);
+  // print_new_words_(words);
 
   incoming_queue_->enqueue(words);
   if (incoming_queue_->almost_full()) {
@@ -167,7 +167,7 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
     return;
   }
   
-  // Merge segments
+  // Merge words and segments
   Transcript::Operations pending_ops;
 
   auto prevA = indiciesA[0], prevB = indiciesB[0];
@@ -180,7 +180,9 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
                                             old_words[prevA_id].get().c_str(),
                                             old_words[prevA_id].get_prob(),
                                             old_words[prevA_id].get_occurrences());
-    pending_ops.push_back({Transcript::OperationType::MATCHED_WORD, prevA_id, prevB_id});
+
+    pending_ops.push_back({Transcript::OperationType::MERGE, prevA_id, prevB_id});
+    pending_ops.push_back({Transcript::OperationType::INCREMENT, prevA_id});
 
     // Current index "i" may not be valid
     int curA_id = prevA_id + 1, curB_id = prevB_id + 1;
@@ -200,30 +202,39 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
       // 
       // Custom Merge Rules
       // 
-      // 0.1  If both are segments, merge transcript segment data
-      if (curA_id != nextA_id && curB_id != nextB_id && 
-            old_words[curA_id].is_segment() && new_words[curB_id].is_segment()) {
-        {
-          RCLCPP_DEBUG(node_ptr_->get_logger(), 
-            "\nSegment Merge.  '\n%s'\nv.s. (new)\n%s",
-                                              old_words[curA_id].get_segment_data_str().c_str(),
-                                              new_words[curB_id].get_segment_data_str().c_str());
-          pending_ops.push_back({Transcript::OperationType::MERGE_SEGMENTS, curA_id, curB_id});
-        }
-      }
-      // 0.2  If the transcript has a segment not present in the update, schedule it for deletion
-      else if (curA_id != nextA_id && old_words[curA_id].is_segment()) {
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
-        curA_id++;
+      // 0:  Handle Segments
+      bool is_a_seg = curA_id != nextA_id && old_words[curA_id].is_segment();
+      bool is_b_seg = curB_id != nextB_id && new_words[curB_id].is_segment();
+      if ( is_a_seg && is_b_seg ) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tMerging segments '%s' and '%s' at %d",
+                                            old_words[curA_id].as_timestamp_str().c_str(), 
+                                            new_words[curB_id].as_timestamp_str().c_str(), 
+                                            curA_id);
+
+        pending_ops.push_back({Transcript::OperationType::MERGE, curA_id, curB_id});
+        ++curA_id; ++curB_id;
         continue;
       }
-      // 0.3  Add segments from the update to the segment (may get deleted later)
-      else if (curB_id != nextB_id && new_words[curB_id].is_segment()) {
+      else if ( is_a_seg && !is_b_seg ) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tReducing likelihood of segment '%s' at %d",
+                                            old_words[curA_id].as_timestamp_str().c_str(), 
+                                            curA_id);
+
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
+        ++curA_id;
+        continue;
+      }
+      else if ( !is_a_seg && is_b_seg ) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tInserting segment '%s' at '%d'",
+                                            new_words[curB_id].as_timestamp_str().c_str(), 
+                                            curA_id);
+
         pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
-        curB_id++;
+        ++curB_id;
         continue;
       }
+      // Neither are segments, continue loop
+
       // 1.  Encourage over-writing punctuation in the transcript (if the update is a word)
       if (curA_id != nextA_id && curB_id != nextB_id && 
             old_words[curA_id].is_punct() && ! new_words[curB_id].is_punct()) {
@@ -233,6 +244,7 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
                                             old_words[curA_id].get_prob(),
                                             old_words[curA_id].get_occurrences()-1,
                                             new_words[curB_id].get().c_str());
+
         pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
         pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
         curA_id++; curB_id++;
@@ -247,6 +259,7 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
                                                   new_words[curB_id].get().c_str(), 
                                                   new_words[curB_id].get_prob(),
                                                   new_words[curB_id].get_occurrences());
+
         // If we have a conflict, the word's likely-hood could be decreased.
         //    - Removed:  This causes some issues with words that sound the same 
         //            i.e. are constantly in conflict.
@@ -273,6 +286,7 @@ void TranscriptManagerNode::merge_one_(const std::vector<Word> &new_words) {
                                                 old_words[curA_id].get_prob(),
                                                 old_words[curA_id].get_occurrences(),
                                                 old_words[curA_id].get_occurrences() - 1);
+
         pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
         curA_id++;
       }
@@ -306,8 +320,8 @@ void TranscriptManagerNode::clear_queue_() {
 
     {
       // Debug Print
-      const auto print_str = transcript_.get_print_str();
-      RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
+      // const auto print_str = transcript_.get_print_str();
+      // RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
     }
   }
 }
