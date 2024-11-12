@@ -16,28 +16,12 @@
 #include "whisper_util/audio_buffers.hpp"
 #include "whisper_util/model_manager.hpp"
 #include "whisper_util/whisper.hpp"
+#include "whisper_util/chrono_utils.hpp"
 
 #include "whisper_idl/action/inference.hpp"
 #include "whisper_idl/msg/whisper_tokens.hpp"
 
 namespace whisper {
-
-inline std::chrono::system_clock::time_point ros_time_to_chrono(const rclcpp::Time &now) {
-  std::chrono::nanoseconds nanoseconds(now.nanoseconds());
-  return std::chrono::system_clock::time_point(nanoseconds);
-};
-
-inline std::pair<int64_t, uint64_t> chrono_time_to_ros(
-                const std::chrono::system_clock::time_point &timestamp) {
-  std::chrono::system_clock::duration duration_since_epoch = timestamp.time_since_epoch();
-  std::chrono::seconds sec = 
-    std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
-  std::chrono::nanoseconds nano = 
-        std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch - sec);
-  return {sec.count(), nano.count()};
-};
-
-
 
 class InferenceNode {
   using Inference = whisper_idl::action::Inference;

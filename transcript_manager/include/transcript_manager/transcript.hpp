@@ -8,6 +8,9 @@
 #include <iomanip>  // std::put_time, std::setfill
 #include <algorithm> // std::remove_if
 
+#include "rclcpp/rclcpp.hpp" // node_ptr_
+
+#include "whisper_util/chrono_utils.hpp"
 #include "transcript_manager/words.hpp"
 
 namespace whisper {
@@ -29,7 +32,14 @@ private:
   std::vector<int> segment_ids;      // Sorted Array of transcript_ indicies
   int stale_id_;
 
+  // LCS Hyperparameter
+  int allowed_gaps_;
+
+  // Primaraly used for logging
+  rclcpp::Node::SharedPtr node_ptr_;
+
 public:
+  // Implmentation in transcript_operations.cpp
   enum OperationType {INCREMENT, DECREMENT, INSERT, DELETE, MERGE, CONFLICT};
   struct Operation {
     const OperationType op_type_;
@@ -46,82 +56,24 @@ public:
                   op_type_(op_type), id_(id), other_id_(other_id) {}
   };
   using Operations = std::vector<Operation>;
+  void run(const Operations &operations, const std::vector<Word> &words_other);   // run all ops
+  void run(const Operations &operations);                                         // run subset
 
+private:
   void inc_word_or_seg(const int id);
   void dec_word_or_seg(const int id);
 
   void del_word(const int id);
-  void insert_word(const int id, const std::vector<Word> &new_words,
-                    const int new_word_id);
-  void conflict_word(const int id, const std::vector<Word> &new_words,
-                    const int other_id);
+  void insert_word(const int id, const std::vector<Word> &new_words, const int new_word_id);
+  void conflict_word(const int id, const std::vector<Word> &new_words, const int other_id);
 
   void del_segment(const int id);
-  void insert_segment(const int id, const std::vector<Word> &new_words,
-                                                    const int new_word_id);
-  void merge_segments(const int id, const std::vector<Word> &new_words,
-                                                    const int new_word_id);
+  void insert_segment(const int id, const std::vector<Word> &new_words,const int new_word_id);
+  void merge_segments(const int id, const std::vector<Word> &new_words, const int new_word_id);
 
-  void run(const Operations &operations, const std::vector<Word> &words_other);   // run all ops
-  void run(const Operations &operations);                                         // run subset
-
-public:
-  Transcript(): stale_id_(0) {};
-
-  // 
-  // Other Trancript Functions
-  // 
-  void push_back(const std::vector<Word> &words_and_segments);
-
-  bool empty() const {
-    return transcript_.empty();
-  }
-
-  std::vector<Word> get_words() {
-    return transcript_;
-  }
-
-  std::vector<Word> get_words_splice() {
-    // TODO:  return iterator
-    return std::vector<Word>(transcript_.begin() + stale_id_, transcript_.end());
-  }
-
-  // std::string get_active_word(const int id) {
-  //   return transcript_[id + stale_id_].get();
-  // }
-
-  int get_stale_word_id() const {
-    return stale_id_;
-  }
-
-  void set_stale_word_id(const int stale_id) {
-    stale_id_ = stale_id;
-  }
-
-  void clear_mistakes(const int occurrence_threshold);
-
-  // Provide access to the const iterator
-  using const_iterator = typename std::vector<Word>::const_iterator;
-  const_iterator begin() const { return transcript_.cbegin(); }
-  const_iterator end() const { return transcript_.cend(); }
-
-  std::string get_print_str() {
-    std::string print_str = "\033[34m";
-    // for (const auto & word : transcript_) {
-    for (size_t i = 0; i < transcript_.size(); ++i) {
-      const auto &word = transcript_[i];
-      if ( word.is_segment() ) {
-        print_str += "\n";  
-        print_str += word.as_str();
-        continue;
-      }
-      print_str += word.get();
-    }
-    print_str += "\033[0m";
-    return print_str;
-  }
-
-private:
+  // Helper functions
+  bool is_valid_start(std::chrono::system_clock::time_point prev, 
+                      std::chrono::system_clock::time_point next);
   inline bool id_check(const int &id, const size_t &max_val) {
     if ( id < 0 || static_cast<size_t>(id) >= max_val ) {
       fprintf(stderr, "Failed bounds check on run op. id: %d, max_val:  %ld\n", id, max_val);
@@ -134,7 +86,46 @@ private:
     return words[id].is_segment();
   }
 
+public:
+  Transcript(const int allowed_gaps, const rclcpp::Node::SharedPtr node_ptr): 
+              stale_id_(0), allowed_gaps_(allowed_gaps), node_ptr_(node_ptr) {};
+
+  void push_back(const std::vector<Word> &words_and_segments);
+  void clear_mistakes(const int occurrence_threshold);
+  std::string get_print_str();
+  void merge_one_(const std::vector<Word> &new_words);
+
+  bool empty() const { return transcript_.empty(); }
+  int get_stale_word_id() const { return stale_id_; }
+  void set_stale_word_id(const int stale_id) { stale_id_ = stale_id; }
+
+  std::vector<Word> get_words() {
+    // TODO:  return iterator
+    return transcript_;
+  }
+
+  std::vector<Word> get_words_splice() {
+    // TODO:  return iterator
+    return std::vector<Word>(transcript_.begin() + stale_id_, transcript_.end());
+  }
+
+  // Provide access to the const iterator
+  using const_iterator = typename std::vector<Word>::const_iterator;
+  const_iterator begin() const { return transcript_.cbegin(); }
+  const_iterator end() const { return transcript_.cend(); }
+
+private:
   void print_segment_ids();
+
+private: 
+  struct DPEntry {
+      int length;
+      int gaps;
+  };
+  std::tuple<std::vector<int>, std::vector<int>> lcs_indicies_(
+                                                  const std::vector<std::string>& textA,
+                                                  const std::vector<std::string>& textB,
+                                                  int allowedGaps);
 };
 
 // 

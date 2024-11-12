@@ -5,6 +5,8 @@
 #include <string>
 #include <stdexcept>
 
+#include "whisper_util/chrono_utils.hpp"
+
 namespace whisper {
 
 /**
@@ -93,36 +95,17 @@ public:
   }
 
   std::string as_str() const {
-    std::stringstream ss;
-    // Convert to time_t for easier formating
-    std::time_t segment_start_time = std::chrono::system_clock::to_time_t(segment_start_);
-    std::chrono::milliseconds ms = 
-                          std::chrono::duration_cast<std::chrono::milliseconds>
-                          (segment_start_.time_since_epoch()) % 1000;
-    ss << "[";
-    ss << std::put_time(std::localtime(&segment_start_time), "%Y-%m-%d %H:%M:%S");
-    ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-    ss << " (";
-    ss << duration_.count() << " ms";
-    ss << ")]: ";
-    return ss.str();
+    return "[" + timestamp_as_str(segment_start_) + "(" + 
+                      std::to_string(duration_.count()) + " ms )]";
   }
 
   std::string as_timestamp_str() const {
-    std::stringstream ss;
-    // Convert to time_t for easier formating
-    std::time_t segment_start_time = std::chrono::system_clock::to_time_t(segment_start_);
-    std::chrono::milliseconds ms = 
-                          std::chrono::duration_cast<std::chrono::milliseconds>
-                          (segment_start_.time_since_epoch()) % 1000;
-    ss << "[";
-    ss << std::put_time(std::localtime(&segment_start_time), "%Y-%m-%d %H:%M:%S");
-    ss << '.' << std::setfill('0') << std::setw(3) << ms.count();
-    ss << "]";
-    return ss.str();
+    return "[" + timestamp_as_str(segment_start_) + "]";
   }
 };
 
+
+// Helper functions for
 
 } // end of namespace whisper
 #endif // TRANSCRIPT_MANAGER__TOKENS_AND_SEGMENTS_HPP_

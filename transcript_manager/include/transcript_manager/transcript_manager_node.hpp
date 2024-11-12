@@ -21,37 +21,12 @@
 #include "whisper_idl/msg/audio_transcript.hpp" 
 
 #include "whisper_util/audio_buffers.hpp"
+#include "whisper_util/chrono_utils.hpp"
 #include "transcript_manager/tokens_and_segments.hpp"
 #include "transcript_manager/words.hpp"
 #include "transcript_manager/transcript.hpp"
 
 namespace whisper {
-
-inline std::chrono::system_clock::time_point ros_msg_to_chrono(
-                      const builtin_interfaces::msg::Time& ros_time) {
-  // Convert ROS time (seconds and nanoseconds) to a std::chrono::duration
-  std::chrono::seconds sec(ros_time.sec);
-  std::chrono::nanoseconds nsec(ros_time.nanosec);
-  std::chrono::system_clock::duration total_duration = sec + nsec;
-
-  std::chrono::system_clock::time_point time_point(total_duration);
-  return time_point;
-};
-
-inline builtin_interfaces::msg::Time chrono_to_ros_msg(
-                      const std::chrono::system_clock::time_point& timestamp) {
-  builtin_interfaces::msg::Time ros_time;
-
-  std::chrono::system_clock::duration duration_since_epoch = timestamp.time_since_epoch();
-  std::chrono::seconds sec = 
-    std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
-  std::chrono::nanoseconds nano = 
-        std::chrono::duration_cast<std::chrono::nanoseconds>(duration_since_epoch - sec);
-
-  ros_time.sec = sec.count();
-  ros_time.nanosec = nano.count();
-  return ros_time;
-};
 
 class TranscriptManagerNode {
   using Inference = whisper_idl::action::Inference;
@@ -60,6 +35,8 @@ class TranscriptManagerNode {
   using AudioTranscript = whisper_idl::msg::AudioTranscript;
 
   const int whisper_ts_to_ms_ratio = 10;
+  // Setting for how many tokens within brackets (e.g. "[ .. ]") could be combined
+  const int max_number_tokens_to_combine = 10;
 
 
 public:
@@ -94,25 +71,19 @@ protected:
 
   // Data
   std::unique_ptr<ThreadSafeRing<std::vector<Word>>> incoming_queue_;
+  std::unique_ptr<Transcript> transcript_;
   void clear_queue_();
-  void merge_one_(const std::vector<Word> &new_words);
-  Transcript transcript_;
 
   void serialize_transcript_(AudioTranscript &msg);
 
-  // LCS Hyperparameter
-  int allowed_gaps;
-
-  // Algorithms
-  struct DPEntry {
-      int length;
-      int gaps;
-  };
-  std::tuple<std::vector<int>, std::vector<int>> lcs_indicies_(
-                                                  const std::vector<std::string>& textA,
-                                                  const std::vector<std::string>& textB,
-                                                  int allowedGaps);
-
+private:
+  // Helper functions for deseralizing the message
+  bool is_special_token(const std::vector<std::string> &tokens, const int idx);
+  bool my_ispunct(const std::vector<std::string> &tokens, const int idx);
+  bool contains_char(const std::string &str, const char target); // helper
+  std::pair<bool, int> join_tokens(const std::vector<std::string> &tokens, const int idx);
+  std::string combine_text(const std::vector<std::string> &tokens, const int idx, const int num);
+  float combine_prob(const std::vector<float> &probs, const int idx, const int num);
 };
 } // end of namespace whisper
 #endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_

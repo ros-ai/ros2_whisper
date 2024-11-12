@@ -329,9 +329,7 @@ bool InferenceNode::run_inference_(whisper_idl::msg::WhisperTokens &result) {
   //          static_cast<int>(milliseconds.count()));  // Milliseconds
   // }
 
-  auto [sec, nanosec] = chrono_time_to_ros(timestamp);
-  result.stamp.sec = sec;
-  result.stamp.nanosec = nanosec;
+  result.stamp = chrono_to_ros_msg(timestamp);
   // RCLCPP_INFO(node_ptr_->get_logger(), "Audio Inference Start:   %d.%d", 
   //                                result.stamp.sec, result.stamp.nanosec);
 
