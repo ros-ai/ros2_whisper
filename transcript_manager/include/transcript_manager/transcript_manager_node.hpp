@@ -49,9 +49,6 @@ protected:
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
   std::vector<Word> deserialize_msg_(const WhisperTokens::SharedPtr &msg);
-  void print_msg_(const WhisperTokens::SharedPtr &msg);
-  void print_new_words_(const std::vector<Word> &new_words_and_segments);
-  void print_timestamp_(std::chrono::system_clock::time_point timestamp);
 
   // action server
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
@@ -62,21 +59,20 @@ protected:
   void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
   rclcpp::Time inference_start_time_;
 
-  // Clear Incmoing Queue timer
+  // Callback to merge incoming queue into transcript
   void clear_queue_callback_();
+  void clear_queue_();
   rclcpp::TimerBase::SharedPtr clear_queue_timer_;
 
   // Outgoing continuous audio transcription publishing
+  void serialize_transcript_(AudioTranscript &msg);
   rclcpp::Publisher<AudioTranscript>::SharedPtr transcript_pub_;
 
+private:
   // Data
   std::unique_ptr<ThreadSafeRing<std::vector<Word>>> incoming_queue_;
   std::unique_ptr<Transcript> transcript_;
-  void clear_queue_();
 
-  void serialize_transcript_(AudioTranscript &msg);
-
-private:
   // Helper functions for deseralizing the message
   bool is_special_token(const std::vector<std::string> &tokens, const int idx);
   bool my_ispunct(const std::vector<std::string> &tokens, const int idx);
@@ -84,6 +80,10 @@ private:
   std::pair<bool, int> join_tokens(const std::vector<std::string> &tokens, const int idx);
   std::string combine_text(const std::vector<std::string> &tokens, const int idx, const int num);
   float combine_prob(const std::vector<float> &probs, const int idx, const int num);
+
+  // Print functions
+  void print_msg_(const WhisperTokens::SharedPtr &msg);
+  void print_new_words_(const std::vector<Word> &new_words_and_segments);
 };
 } // end of namespace whisper
 #endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_

@@ -30,12 +30,12 @@ TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_
   clear_queue_timer_ = node_ptr_->create_wall_timer(std::chrono::milliseconds(1000), 
                 std::bind(&TranscriptManagerNode::clear_queue_callback_, this));
 }
+
 void TranscriptManagerNode::clear_queue_callback_() {
   clear_queue_();
 }
 
 void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
-  // print_timestamp_(ros_msg_to_chrono(msg->stamp));
   // print_msg_(msg);
   const auto &words = deserialize_msg_(msg);
   // print_new_words_(words);
@@ -61,7 +61,6 @@ rclcpp_action::CancelResponse TranscriptManagerNode::on_cancel_inference_(
   return rclcpp_action::CancelResponse::ACCEPT;
 }
 
-
 void TranscriptManagerNode::on_inference_accepted_(
                           const std::shared_ptr<GoalHandleInference> goal_handle) {
   RCLCPP_INFO(node_ptr_->get_logger(), "Starting inference...");
@@ -70,14 +69,14 @@ void TranscriptManagerNode::on_inference_accepted_(
   inference_start_time_ = node_ptr_->now();
   auto batch_idx = 0;
   while (rclcpp::ok()) {
-    if (node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration) {
+    if ( node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration ) {
       result->info = "Inference timed out.";
       RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
       goal_handle->succeed(result);
       return;
     }
 
-    if (goal_handle->is_canceling()) {
+    if ( goal_handle->is_canceling() ) {
       result->info = "Inference cancelled.";
       RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
       goal_handle->canceled(result);
@@ -85,13 +84,13 @@ void TranscriptManagerNode::on_inference_accepted_(
     }
 
     // Wait for other thread
-    while ( incoming_queue_->empty() ) {
+    while (incoming_queue_->empty()) {
       rclcpp::sleep_for(std::chrono::milliseconds(15));
     }
 
     // Clear queue
     std::string message;
-    while ( !incoming_queue_->empty() ) {
+    while (!incoming_queue_->empty()) {
       const auto words = incoming_queue_->dequeue();
       for (const auto &word : words) {
         if ( !word.is_segment() ) {
@@ -108,20 +107,18 @@ void TranscriptManagerNode::on_inference_accepted_(
     ++batch_idx;
   }
 
-  if (rclcpp::ok()) {
+  if ( rclcpp::ok() ) {
     result->info = "Inference succeeded.";
     RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
     goal_handle->succeed(result);
   }
 }
 
-
 void TranscriptManagerNode::clear_queue_() {
   bool one_merged = false;
   while ( !incoming_queue_->empty() ) {
     one_merged = true;
     const auto words_and_segments = incoming_queue_->dequeue();
-    // RCLCPP_INFO(node_ptr_->get_logger(), "Merging %ld words", words_and_segments.first.size());
     transcript_->merge_one_(words_and_segments);
   }
 
@@ -131,11 +128,8 @@ void TranscriptManagerNode::clear_queue_() {
     serialize_transcript_(message);
     transcript_pub_->publish(message);
 
-    {
-      // Debug Print
-      // const auto print_str = transcript_.get_print_str();
-      // RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s", print_str.c_str());
-    }
+    const auto print_str = transcript_->get_print_str();
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "Current Transcript:   \n%s\n", print_str.c_str());
   }
 }
 
@@ -143,7 +137,7 @@ void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {
   int words_skipped = 0; // Skip adding segments into the serialized word array
   for (auto it = transcript_->begin(); it != transcript_->end(); ++it) {
     const auto & word = *it;
-    if (word.is_segment()) {
+    if ( word.is_segment() ) {
       const auto &segment_data = word.get_segment_data();
       msg.seg_start_words_id.push_back(msg.words.size());
       msg.seg_start_time.push_back(chrono_to_ros_msg(segment_data->get_start()));
@@ -158,106 +152,6 @@ void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {
   msg.active_index = transcript_->get_stale_word_id() - words_skipped;
 }
 
-void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
-  std::string print_str;
-
-  print_str += "Inference Duration:  ";
-  print_str += std::to_string(msg->inference_duration);
-  print_str += "\n";
-
-  print_str += "Segment starts:  ";
-  for (size_t i=0; i<msg->segment_start_token_idxs.size(); ++i) {
-    print_str += std::to_string(msg->segment_start_token_idxs[i]) + ", ";
-  }
-  print_str += "\n";
-
-
-  bool first_token = true;
-  int segment_ptr = 0;
-  for (size_t i=0; i<msg->token_texts.size(); ++i) {
-
-    // If token is start of new segment
-    if (static_cast<size_t>(segment_ptr) < msg->segment_start_token_idxs.size() && 
-              i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr])) {
-
-      // First segment
-      if (segment_ptr != 0) {
-        print_str += "\n"; 
-      }
-
-      // Last segment
-      int segment_tokens;
-      if (static_cast<size_t>(segment_ptr + 1) == msg->segment_start_token_idxs.size()) {
-        segment_tokens = msg->token_texts.size() - msg->segment_start_token_idxs[segment_ptr];
-      } else {
-        segment_tokens = msg->segment_start_token_idxs[segment_ptr + 1] - 
-                                      msg->segment_start_token_idxs[segment_ptr];
-      }
-
-      // Segment data
-      print_str += "Segment Tokens: ";
-      print_str += std::to_string(segment_tokens);
-      print_str += "  Duration: ";
-      print_str += std::to_string(msg->end_times[segment_ptr] - msg->start_times[segment_ptr]);
-      print_str += "  Data: ";
-
-      first_token = true; // Dont print "|"
-      ++segment_ptr;
-    }
-
-    if (!first_token) {
-      print_str += "|";
-    }
-
-    print_str += msg->token_texts[i];
-    first_token = false;
-  }
-
-  print_str += "\n";
-  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
-}
-
-void TranscriptManagerNode::print_new_words_(const std::vector<Word> &new_words) {
-  std::string print_str;
-  bool first_print = true;
-  for (size_t i = 0; i < new_words.size();  ++i) {
-    const auto &word = new_words[i];
-    if (word.is_segment()) {
-      const auto seg = word.get_segment_data();
-      print_str += "\n";
-      print_str += seg->as_str();
-      first_print = true;
-      continue;
-    }
-    if (!first_print) {
-      print_str += "||";
-    }
-    print_str += word.get();
-    first_print = false;
-  }
-  print_str += "\n";
-  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
-}
-
-
-void TranscriptManagerNode::print_timestamp_(std::chrono::system_clock::time_point timestamp) {
-  std::time_t time_t_val = std::chrono::system_clock::to_time_t(timestamp);
-  auto duration_since_epoch = timestamp.time_since_epoch();
-  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration_since_epoch);
-  auto milliseconds = 
-          std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch - seconds);
-  std::tm* tm = std::localtime(&time_t_val);
-  RCLCPP_INFO(node_ptr_->get_logger(), "RECIEVED:  %04d-%02d-%02d %02d:%02d:%02d.%03d\n",
-         tm->tm_year + 1900,    // Year
-         tm->tm_mon + 1,        // Month (0-based in tm struct)
-         tm->tm_mday,           // Day
-         tm->tm_hour,           // Hour
-         tm->tm_min,            // Minute
-         tm->tm_sec,            // Second
-         static_cast<int>(milliseconds.count()));  // Milliseconds
-}
-
-
 std::vector<Word> 
     TranscriptManagerNode::deserialize_msg_(const WhisperTokens::SharedPtr &msg) {
   std::vector<Word> words;
@@ -267,23 +161,23 @@ std::vector<Word>
   
   size_t segment_ptr = 0;
   for (size_t i=0; i<msg->token_texts.size(); ++i) {
-    // RCLCPP_INFO(node_ptr_->get_logger(), "i: %ld.  Token:  '%s'", i, msg->token_texts[i].c_str());
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "i: %ld.  Token:  '%s'", i, msg->token_texts[i].c_str());
 
     // 
     // Deserialize Segment Data
     // 
-    if (segment_ptr < msg->segment_start_token_idxs.size() &&
-            i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr])) {
+    if ( segment_ptr < msg->segment_start_token_idxs.size() &&
+            i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr]) ) {
+      RCLCPP_DEBUG(node_ptr_->get_logger(), "\tStart of New Segment");
       // Complete previous word before starting new segment
-      if (!word_wip.empty()) {
+      if ( !word_wip.empty() ) {
         words.push_back({word_wip});
         word_wip.clear();
-        // RCLCPP_INFO(node_ptr_->get_logger(), " NEW SEGMENT     --- Added a word");
       }
 
       // Get the segment end token
       size_t end_token_id;
-      if (segment_ptr == msg->segment_start_token_idxs.size()-1) {
+      if ( segment_ptr == msg->segment_start_token_idxs.size()-1 ) {
         // last segment
         end_token_id = msg->token_texts.size()-1;
       } else {
@@ -304,32 +198,26 @@ std::vector<Word>
     // Deserialize Token Data
     // 
     // Decide if we should start a new word
-    if (!word_wip.empty() && !msg->token_texts[i].empty()) {
-      // RCLCPP_INFO(node_ptr_->get_logger(), "   Checking for space");
-      if (std::isspace(msg->token_texts[i][0])) {
+    if ( !word_wip.empty() && !msg->token_texts[i].empty() ) {
+      if ( std::isspace(msg->token_texts[i][0]) ) {
         words.push_back({word_wip});
         word_wip.clear();
-        // RCLCPP_INFO(node_ptr_->get_logger(), "     --- Added new word");
       }
     }
 
-    if (is_special_token(msg->token_texts, i)) {
+    if ( is_special_token(msg->token_texts, i) ) {
       // Skip whisper special tokens (e.g. [_TT_150_])
     }
-    else if (my_ispunct(msg->token_texts, i)) {
+    else if ( my_ispunct(msg->token_texts, i) ) {
       // Push back last word
       words.push_back({word_wip});
       word_wip.clear();
-      // RCLCPP_INFO(node_ptr_->get_logger(), "Punct     --- Added new word");
       // Add punctuation as its own word
       words.push_back({SingleToken(msg->token_texts[i], msg->token_probs[i]), true});
     }
-    else if (auto [join, num_tokens] = join_tokens(msg->token_texts, i); join) {
+    else if ( auto [join, num_tokens] = join_tokens(msg->token_texts, i); join ) {
       std::string combined_text = combine_text(msg->token_texts, i, num_tokens);
       float combined_prob = combine_prob(msg->token_probs, i, num_tokens);
-      
-      // RCLCPP_INFO(node_ptr_->get_logger(), "Combining next %d tokens-> '%s'", 
-      //                                                 num_tokens, combined_text.c_str());
       word_wip.push_back(SingleToken(combined_text, combined_prob));
       i += num_tokens - 1; // Skip next tokens in loop
     }
@@ -339,13 +227,12 @@ std::vector<Word>
   }
 
   // Final word
-  if (!word_wip.empty()) {
+  if ( !word_wip.empty() ) {
     words.push_back({word_wip});
   }
 
   return words;
 }
-
 
 // 
 // Helper Functions
@@ -429,4 +316,91 @@ float TranscriptManagerNode::combine_prob(const std::vector<float> &probs,
   return ret / num;
 }
 
+
+
+// 
+// Print Functions
+//
+
+void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
+  std::string print_str;
+
+  print_str += "Inference Duration:  ";
+  print_str += std::to_string(msg->inference_duration);
+  print_str += "\n";
+
+  print_str += "Segment starts:  ";
+  for (size_t i=0; i<msg->segment_start_token_idxs.size(); ++i) {
+    print_str += std::to_string(msg->segment_start_token_idxs[i]) + ", ";
+  }
+  print_str += "\n";
+
+
+  bool first_token = true;
+  int segment_ptr = 0;
+  for (size_t i=0; i<msg->token_texts.size(); ++i) {
+
+    // If token is start of new segment
+    if (static_cast<size_t>(segment_ptr) < msg->segment_start_token_idxs.size() && 
+              i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr])) {
+
+      // First segment
+      if (segment_ptr != 0) {
+        print_str += "\n"; 
+      }
+
+      // Last segment
+      int segment_tokens;
+      if (static_cast<size_t>(segment_ptr + 1) == msg->segment_start_token_idxs.size()) {
+        segment_tokens = msg->token_texts.size() - msg->segment_start_token_idxs[segment_ptr];
+      } else {
+        segment_tokens = msg->segment_start_token_idxs[segment_ptr + 1] - 
+                                      msg->segment_start_token_idxs[segment_ptr];
+      }
+
+      // Segment data
+      print_str += "Segment Tokens: ";
+      print_str += std::to_string(segment_tokens);
+      print_str += "  Duration: ";
+      print_str += std::to_string(msg->end_times[segment_ptr] - msg->start_times[segment_ptr]);
+      print_str += "  Data: ";
+
+      first_token = true; // Dont print "|"
+      ++segment_ptr;
+    }
+
+    if (!first_token) {
+      print_str += "|";
+    }
+
+    print_str += msg->token_texts[i];
+    first_token = false;
+  }
+
+  print_str += "\n";
+  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
+}
+
+
+void TranscriptManagerNode::print_new_words_(const std::vector<Word> &new_words) {
+  std::string print_str;
+  bool first_print = true;
+  for (size_t i = 0; i < new_words.size();  ++i) {
+    const auto &word = new_words[i];
+    if (word.is_segment()) {
+      const auto seg = word.get_segment_data();
+      print_str += "\n";
+      print_str += seg->as_str();
+      first_print = true;
+      continue;
+    }
+    if (!first_print) {
+      print_str += "||";
+    }
+    print_str += word.get();
+    first_print = false;
+  }
+  print_str += "\n";
+  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
+}
 } // end of namespace whisper
