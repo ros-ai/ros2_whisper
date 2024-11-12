@@ -1,30 +1,32 @@
-#include "whisper_util/transcript_data.hpp"
+#include "transcript_manager/transcript.hpp"
 
 namespace whisper {
 
-void Transcript::run(const Operations &operations, const std::vector<Word> &words_other) {
-  // bool first_print=true;
-  // printf("Segment ids:  ");
-  // for (const auto &s : segment_ids) {
-  //   if (!first_print)
-  //     printf(", ");
-  //   printf("%d", s);
-  //   first_print=false;
-  // }
-  // printf("\n");
+void Transcript::print_segment_ids() {
+  bool first_print=true;
+  printf("Segment ids:  ");
+  for (const auto &s : segment_ids) {
+    if (!first_print)
+      printf(", ");
+    printf("%d", s);
+    first_print=false;
+  }
+  printf("\n");
+}
 
+void Transcript::run(const Operations &operations, const std::vector<Word> &words_other) {
   // Increment when inserting, decrement when deleting from array
   int op_id_offset = 0; 
   for (const auto &op : operations) {
     switch (op.op_type_) {
       case OperationType::INCREMENT:
         if ( !id_check(op.id_ + op_id_offset + stale_id_, transcript_.size()) ) { continue; };
-        inc_word(op.id_ + op_id_offset);
+        inc_word_or_seg(op.id_ + op_id_offset);
         break;
 
       case OperationType::DECREMENT:
         if ( !id_check(op.id_ + op_id_offset + stale_id_, transcript_.size()) ) { continue; };
-        dec_word(op.id_ + op_id_offset);
+        dec_word_or_seg(op.id_ + op_id_offset);
         break;
 
       case OperationType::INSERT:
@@ -78,11 +80,11 @@ void Transcript::run(const Operations &operations) {
 
     switch (op.op_type_) {
       case OperationType::INCREMENT:
-        inc_word(op.id_ + op_id_offset);
+        inc_word_or_seg(op.id_ + op_id_offset);
         break;
 
       case OperationType::DECREMENT:
-        dec_word(op.id_ + op_id_offset);
+        dec_word_or_seg(op.id_ + op_id_offset);
         break;
 
       case OperationType::DELETE:
@@ -101,12 +103,12 @@ void Transcript::run(const Operations &operations) {
 }
 
 // Standard Operations
-void Transcript::inc_word(const int id) {
+void Transcript::inc_word_or_seg(const int id) {
   // Also works on segments
   transcript_[id + stale_id_].inc_best();
 }
 
-void Transcript::dec_word(const int id) {
+void Transcript::dec_word_or_seg(const int id) {
   // Also works on segments
   transcript_[id + stale_id_].dec_best();
 }

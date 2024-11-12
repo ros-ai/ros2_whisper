@@ -1,5 +1,5 @@
-#ifndef WHISPER_NODES__TRANSCRIPT_MANAGER_NODE_HPP_
-#define WHISPER_NODES__TRANSCRIPT_MANAGER_NODE_HPP_
+#ifndef TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_
+#define TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_
 
 #include <chrono>
 // #include <memory>
@@ -7,7 +7,7 @@
 // #include <stdexcept>
 #include <string>
 #include <vector>
-#include <utility>  // For std::pair
+#include <utility>  // std::pair
 // #include <mutex>
 
 // #include "rcl_interfaces/msg/set_parameters_result.hpp"
@@ -20,8 +20,10 @@
 #include "whisper_idl/msg/whisper_tokens.hpp"
 #include "whisper_idl/msg/audio_transcript.hpp" 
 
-#include "whisper_util/transcript_data.hpp"
 #include "whisper_util/audio_buffers.hpp"
+#include "transcript_manager/tokens_and_segments.hpp"
+#include "transcript_manager/words.hpp"
+#include "transcript_manager/transcript.hpp"
 
 namespace whisper {
 
@@ -113,4 +115,4 @@ protected:
 
 };
 } // end of namespace whisper
-#endif // WHISPER_NODES__TRANSCRIPT_MANAGER_NODE_HPP_
+#endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_

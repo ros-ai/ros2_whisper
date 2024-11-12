@@ -30,6 +30,7 @@ endforeach()
 # transcript_manager node
 add_library(${PROJECT_NAME} SHARED
   src/transcript_manager_node.cpp
+  src/transcript.cpp
 )
 ament_target_dependencies(${PROJECT_NAME}
   ${TRANSCRIPT_MANAGER_DEPENDENCIES}
