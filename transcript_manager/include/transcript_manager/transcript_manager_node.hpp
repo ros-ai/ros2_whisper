@@ -24,6 +24,7 @@
 #include "whisper_util/chrono_utils.hpp"
 #include "transcript_manager/tokens_and_segments.hpp"
 #include "transcript_manager/words.hpp"
+#include "transcript_manager/segments.hpp"
 #include "transcript_manager/transcript.hpp"
 
 namespace whisper {
@@ -48,7 +49,7 @@ protected:
   // audio subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
-  std::vector<Word> deserialize_msg_(const WhisperTokens::SharedPtr &msg);
+  std::vector<Segment> deserialize_msg_(const WhisperTokens::SharedPtr &msg);
 
   // action server
   rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
@@ -70,7 +71,7 @@ protected:
 
 private:
   // Data
-  std::unique_ptr<ThreadSafeRing<std::vector<Word>>> incoming_queue_;
+  std::unique_ptr<ThreadSafeRing<std::vector<Segment>>> incoming_queue_;
   std::unique_ptr<Transcript> transcript_;
 
   // Helper functions for deseralizing the message
@@ -83,7 +84,7 @@ private:
 
   // Print functions
   void print_msg_(const WhisperTokens::SharedPtr &msg);
-  void print_new_words_(const std::vector<Word> &new_words_and_segments);
+  void print_new_words_(const std::vector<Segment> &new_words);
 };
 } // end of namespace whisper
 #endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_

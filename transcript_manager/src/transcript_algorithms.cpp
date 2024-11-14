@@ -2,191 +2,181 @@
 
 namespace whisper {
 
-void Transcript::merge_one_(const std::vector<Word> &new_words) {
-  auto stale_id = get_stale_word_id();
-  
-  std::string tmp_print_str_1_;
-  std::string tmp_print_str_2_;
-
-  if (empty()) {
-    push_back(new_words);
-    RCLCPP_DEBUG(node_ptr_->get_logger(), "First Words Added");
-    return;
+void Transcript::merge_one_(const std::vector<Segment> &other) {
+  if ( !other.empty() ) {
+    // Set the stale segment based on incoming timestamp
+    set_stale_segment(other[0].get_start());
   }
+
+  if ( empty() ) {
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "[LCS] First Words Added to Transcript");
+    push_back(other);
+    return;
+  } // else segments_.size() > 0
 
   // Get comparable strings for fuzzy lcs matching
-  auto old_words = get_words_splice();
-  std::vector<std::string> comp_words_old, comp_words_new;
-  std::vector<int> skipped_ids_old, skipped_ids_new;
-  int skipped_so_far = 0;
-  for (const auto &word : old_words) {
-    const auto &comp_word = word.get_comparable();
-    if ( comp_word.empty() ) {
-      skipped_so_far++;
-    } else {
-      comp_words_old.push_back(comp_word);  
-      skipped_ids_old.push_back(skipped_so_far);
-      tmp_print_str_1_ += "'" + comp_words_old[comp_words_old.size() - 1] + "', ";
+  //  hash lcs_id -> (seg_id, word_id)
+  std::vector<index> hash_t, hash_o;
+  std::vector<std::string> comp_str_t, comp_str_o;
+  for (size_t seg_id = stale_segment_; seg_id < segments_.size(); ++seg_id) {
+    for (size_t word_id = 0; word_id < segments_[seg_id].words_.size(); ++word_id) {
+      std::string comp_word = segments_[seg_id].words_[word_id].get_comparable();
+      if ( !comp_word.empty() ) {
+        comp_str_t.push_back(comp_word);
+        hash_t.push_back({static_cast<int>(seg_id), static_cast<int>(word_id)});
+      }
     }
   }
-  skipped_so_far = 0;
-  for (size_t i = 0; i < new_words.size(); ++i) {
-    const auto &comp_word = new_words[i].get_comparable();
-    if ( comp_word.empty() ) {
-      skipped_so_far++;
-    } else {
-      comp_words_new.push_back(comp_word);  
-      skipped_ids_new.push_back(skipped_so_far);
-      tmp_print_str_2_ += "'" + comp_words_new[comp_words_new.size() - 1] + "', ";
+  for (size_t seg_id = 0; seg_id < other.size(); ++seg_id) {
+    for (size_t word_id = 0; word_id < other[seg_id].words_.size(); ++word_id) {
+      std::string comp_word = other[seg_id].words_[word_id].get_comparable();
+      if ( !comp_word.empty() ) {
+        comp_str_o.push_back(comp_word);
+        hash_o.push_back({static_cast<int>(seg_id), static_cast<int>(word_id)});
+      }
     }
   }
-  RCLCPP_DEBUG(node_ptr_->get_logger(), " ");
-  RCLCPP_DEBUG(node_ptr_->get_logger(), "Comp Against:  %s", tmp_print_str_1_.c_str());
-  RCLCPP_DEBUG(node_ptr_->get_logger(), "   New Words:  %s", tmp_print_str_2_.c_str());
 
   // Longest Common Substring with Gaps.
-  //   A:  Old words (already in Transcript), B:  New words recieved from live feed
-  auto [indiciesA, indiciesB] = lcs_indicies_(comp_words_old, comp_words_new, allowed_gaps_);
-  if ( indiciesA.empty() ) {
-    RCLCPP_DEBUG(node_ptr_->get_logger(), "  ---No overlap");
-    push_back(new_words);
+  auto [indicies_t, indicies_o] = lcs_indicies_(comp_str_t, comp_str_o, allowed_gaps_);
+  if ( indicies_t.empty() ) {
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "[LCS] - No overlap in substring");
+    push_back(other);
     return;
   }
-  
+
+  // 
   // Merge words and segments
+  // 
   Transcript::Operations pending_ops;
 
-  auto prevA = indiciesA[0], prevB = indiciesB[0];
-  for(size_t i = 1; i <= indiciesA.size(); ++i) {
-    // Include the offsets from skipped words
-    auto prevA_id = prevA + skipped_ids_old[prevA];
-    auto prevB_id = prevB + skipped_ids_new[prevB];
-    RCLCPP_DEBUG(node_ptr_->get_logger(), "\tPrevA: %d,  PrevB:  %d:   %s (%f\\%d)", 
-                                            prevA_id, prevB_id, 
-                                            old_words[prevA_id].get().c_str(),
-                                            old_words[prevA_id].get_prob(),
-                                            old_words[prevA_id].get_occurrences());
+  // Helper lambda function
+  auto check_segment = [](const index &id, const std::vector<Segment> &segs) -> bool {
+    return static_cast<size_t>(id.second) >= segs[id.first].words_.size();
+  };
+  auto get_word = [](const index &id, const std::vector<Segment> &segs) -> const Word& {
+    return segs[id.first].words_[id.second];
+  };
 
-    pending_ops.push_back({Transcript::OperationType::MERGE, prevA_id, prevB_id});
-    pending_ops.push_back({Transcript::OperationType::INCREMENT, prevA_id});
+  // Start at first matched word
+  index cur_t = hash_t[indicies_t[0]], cur_o = hash_o[indicies_o[0]];
+  for(size_t i = 1; i <= indicies_t.size(); ++i) {
+    RCLCPP_DEBUG(node_ptr_->get_logger(), "[LCS]\tMatch:   '%s' -- and -- '%s'", 
+                                            get_word(cur_t, segments_).get().c_str(),
+                                            get_word(cur_o, other).get().c_str());
+    pending_ops.push_back({Transcript::OperationType::CONFLICT, cur_t, cur_o});
+    pending_ops.push_back({Transcript::OperationType::INCREMENT, cur_t});
 
     // Current index "i" may not be valid
-    int curA_id = prevA_id + 1, curB_id = prevB_id + 1;
-    int nextA_id, nextB_id;
-    if ( i == indiciesA.size() ) {
-      // The following merge rules will run to the end of the new_words and old_words array.
-      // Most commonly, new words that do not exist in the transcript are inserted at the end.
-      // TODO:  Apply these rules to the begining (before first LCS Match)
-      nextA_id = old_words.size(), nextB_id = new_words.size();
+    index next_t, next_o;
+    if ( i == indicies_t.size() ) {
+      // Next index is one past final word
+      next_t = {segments_.size()-1, segments_[segments_.size()-1].words_.size()};
+      next_o = {other.size()-1, other[other.size()-1].words_.size()};
     } else {
-      nextA_id = indiciesA[i] + skipped_ids_old[indiciesA[i]];
-      nextB_id = indiciesB[i] + skipped_ids_new[indiciesB[i]];
+      next_t = hash_t[indicies_t[i]]; next_o = hash_o[indicies_o[i]];
     }
-    // RCLCPP_INFO(node_ptr_->get_logger(), "\tNextA: %d,  NextB:  %d", nextA_id, nextB_id);
-    while (curA_id != nextA_id || curB_id != nextB_id) {
-      // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tCurA: %d,  CurB:  %d", curA_id, curB_id);
+
+    // Move to next word
+    if ( cur_t != next_t ) { ++cur_t.second; };
+    if ( cur_o != next_o ) { ++cur_o.second; };
+
+    RCLCPP_DEBUG(node_ptr_->get_logger(), 
+                "[LCS]\tNext Transcript Index:   (%d, %d).  Next Other Index:  (%d, %d)", 
+                next_t.first, next_t.second, next_o.first, next_o.second);
+    while ( cur_t != next_t || cur_o != next_o ) {
+      RCLCPP_DEBUG(node_ptr_->get_logger(), 
+                "[LCS]\t\tCurrent Transcript Index:   (%d, %d).  Current Other Index:  (%d, %d)", 
+                cur_t.first, cur_t.second, cur_o.first, cur_o.second);
+
+      // Check if we encountered segment boundary
+      bool seg_next_t = cur_t != next_t && check_segment(cur_t, segments_);
+      bool seg_next_o = cur_o != next_o && check_segment(cur_o, other);
+      if ( seg_next_t && seg_next_o ) {
+        ++cur_t.first; ++cur_o.first;
+        RCLCPP_DEBUG(node_ptr_->get_logger(), 
+          "[LCS]\t\t\tMatching Segment boundary --- %s (:existing) v.s. (new:) %s", 
+          segments_[cur_t.first].as_timestamp_str().c_str(), 
+          other[cur_o.first].as_timestamp_str().c_str());
+
+        pending_ops.push_back({Transcript::OperationType::MERGE_SEG, cur_t, cur_o});
+        cur_t.second = 0; cur_o.second = 0;
+        continue;
+      }
+      else if ( seg_next_t && !seg_next_o ) {
+        ++cur_t.first;
+        cur_t.second = 0;
+        // Segment boundary in transcript but not in new words.  Decrease likelihood of segment
+        pending_ops.push_back({Transcript::OperationType::DEC_SEG, cur_t});
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "[LCS]\t\t\tExtra Segment boundary --- %s", 
+                                              segments_[cur_t.first].as_timestamp_str().c_str());
+        continue;
+      }
+      else if ( !seg_next_t && seg_next_o ) {
+        // Segment boundary in update missing in transcript.  Insert new segment
+        ++cur_o.first;
+        cur_o.second = 0;
+        pending_ops.push_back(
+            {Transcript::OperationType::INSERT_SEG, cur_t, cur_o});
+        RCLCPP_DEBUG(node_ptr_->get_logger(), "[LCS]\t\t\tMissing Segment boundary --- %s", 
+                                                  other[cur_o.first].as_timestamp_str().c_str());
+        continue;
+      }
       // 
       // Custom Merge Rules
+      //    Handle inserting/decrementing/conflicting gaps in the lcs
       // 
-      // 0:  Handle Segments
-      bool is_a_seg = curA_id != nextA_id && old_words[curA_id].is_segment();
-      bool is_b_seg = curB_id != nextB_id && new_words[curB_id].is_segment();
-      if ( is_a_seg && is_b_seg ) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tMerging segments '%s' and '%s' at %d",
-                                            old_words[curA_id].as_timestamp_str().c_str(), 
-                                            new_words[curB_id].as_timestamp_str().c_str(), 
-                                            curA_id);
-
-        pending_ops.push_back({Transcript::OperationType::MERGE, curA_id, curB_id});
-        ++curA_id; ++curB_id;
-        continue;
-      }
-      else if ( is_a_seg && !is_b_seg ) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tReducing likelihood of segment '%s' at %d",
-                                            old_words[curA_id].as_timestamp_str().c_str(), 
-                                            curA_id);
-
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
-        ++curA_id;
-        continue;
-      }
-      else if ( !is_a_seg && is_b_seg ) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tInserting segment '%s' at '%d'",
-                                            new_words[curB_id].as_timestamp_str().c_str(), 
-                                            curA_id);
-
-        pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
-        ++curB_id;
-        continue;
-      }
-      // Neither are segments, continue loop
-
       // 1.  Encourage over-writing punctuation in the transcript (if the update is a word)
-      if ( curA_id != nextA_id && curB_id != nextB_id && 
-            old_words[curA_id].is_punct() && ! new_words[curB_id].is_punct() ) {
+      if ( cur_t != next_t && cur_o != next_o && 
+            get_word(cur_t, segments_).is_punct() && !get_word(cur_o, other).is_punct() ) {
         RCLCPP_DEBUG(node_ptr_->get_logger(), 
-          "\t\tWord Conflict Transcript (punct) vs update (word).  '%s' (%f\\->%d) --> '%s'",
-                                            old_words[curA_id].get().c_str(),
-                                            old_words[curA_id].get_prob(),
-                                            old_words[curA_id].get_occurrences()-1,
-                                            new_words[curB_id].get().c_str());
+                          "[LCS]\t\t\tOverwrite Punctuation:   '%s' (:overwrite) v.s. (new:) '%s'", 
+                          get_word(cur_t, segments_).get().c_str(),
+                          get_word(cur_o, other).get().c_str());
 
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id});
-        pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
-        curA_id++; curB_id++;
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, cur_t});
+        pending_ops.push_back({Transcript::OperationType::CONFLICT, cur_t, cur_o});
       }
-      // 1.2  Conflict when there is a gap because of missmatched words in the LCS
-      else if ( curA_id != nextA_id && curB_id != nextB_id)  {
+      // 2.  Conflict when there is a gap because of missmatched words in the LCS
+      else if ( cur_t != next_t && cur_o != next_o ) {
         RCLCPP_DEBUG(node_ptr_->get_logger(), 
-                          "\t\tResolve Conflict Between '%s'(%f\\%d) and '%s'(%f\\%d)",
-                                                  old_words[curA_id].get().c_str(), 
-                                                  old_words[curA_id].get_prob(), 
-                                                  old_words[curA_id].get_occurrences(), 
-                                                  new_words[curB_id].get().c_str(), 
-                                                  new_words[curB_id].get_prob(),
-                                                  new_words[curB_id].get_occurrences());
+                          "[LCS]\t\t\tConflict:   '%s' (:existing) v.s. (new:) '%s'", 
+                          get_word(cur_t, segments_).get().c_str(),
+                          get_word(cur_o, other).get().c_str());
 
-        // If we have a conflict, the word's likely-hood could be decreased.
-        //    - Removed:  This causes some issues with words that sound the same 
-        //            i.e. are constantly in conflict.
-        // pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id}); // Removed 
-        pending_ops.push_back({Transcript::OperationType::CONFLICT, curA_id, curB_id});
-        curA_id++; curB_id++;
+        pending_ops.push_back({Transcript::OperationType::CONFLICT, cur_t, cur_o});
       }
-      // 1.3  Words appear in the audio steam (update) which are not part of the transcript
-      else if ( curB_id != nextB_id ) {
-        RCLCPP_DEBUG(node_ptr_->get_logger(), "\t\tInserting word '%s' -- Between '%s' and '%s'",
-                                            new_words[curB_id].get().c_str(), 
-                                            old_words[curA_id-1].get().c_str(), 
-                                            curA_id == static_cast<int>(old_words.size()) ? 
-                                                        "END" : old_words[curA_id].get().c_str());
+      // 3.  Words appear in the audio steam (update) which are not part of the transcript
+      else if ( cur_o != next_o ) {
+        RCLCPP_DEBUG(node_ptr_->get_logger(), 
+                          "[LCS]\t\t\tInsert:  '%s'", 
+                          get_word(cur_o, other).get().c_str());
 
-        pending_ops.push_back({Transcript::OperationType::INSERT, curA_id, curB_id});
-        curB_id++;
+        pending_ops.push_back({Transcript::OperationType::INSERT, cur_t, cur_o});
       }
-      // 1.4 Words in the transcript are missing from the update
+      // 4.  Words in the transcript are missing from the update
       else {
         RCLCPP_DEBUG(node_ptr_->get_logger(), 
-                                  "\t\tDecreasing Likelihood of word:  '%s' (%f\\%d->%d)", 
-                                                old_words[curA_id].get().c_str(),
-                                                old_words[curA_id].get_prob(),
-                                                old_words[curA_id].get_occurrences(),
-                                                old_words[curA_id].get_occurrences() - 1);
+                          "[LCS]\t\t\tDecrement:  '%s'", 
+                          get_word(cur_t, segments_).get().c_str());
 
-        pending_ops.push_back({Transcript::OperationType::DECREMENT, curA_id, -1});
-        curA_id++;
+        pending_ops.push_back({Transcript::OperationType::DECREMENT, cur_t});
       }
+      // Custom Merge Rules Finished
+      // 
+      // Move to next word
+      if ( cur_t != next_t ) { ++cur_t.second; };
+      if ( cur_o != next_o ) { ++cur_o.second; };
     }
-    // Prep for next loop.  Move prevA and prevB to the next matching word
-    prevA = indiciesA[i]; prevB = indiciesB[i];
+    // Prep for next loop. 
+    // cur_o and cur_t should already be equal to the next values.
   }
 
-  run(pending_ops, new_words);
+  run(pending_ops, other);
   clear_mistakes(-1);
-
-  auto stale_id_new = std::max(stale_id, stale_id + indiciesA[0] - indiciesB[0]);
-  RCLCPP_DEBUG(node_ptr_->get_logger(), "Stale id update %d -> %d", stale_id, stale_id_new );
-  set_stale_word_id(stale_id_new);
+  // auto stale_id_new = std::max(stale_id, stale_id + indiciesA[0] - indiciesB[0]);
+  // RCLCPP_DEBUG(node_ptr_->get_logger(), "Stale id update %d -> %d", stale_id, stale_id_new );
+  // set_stale_word_id(stale_id_new);
 }
 
 
