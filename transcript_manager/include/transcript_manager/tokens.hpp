@@ -1,11 +1,8 @@
-#ifndef TRANSCRIPT_MANAGER__TOKENS_AND_SEGMENTS_HPP_
-#define TRANSCRIPT_MANAGER__TOKENS_AND_SEGMENTS_HPP_
+#ifndef TRANSCRIPT_MANAGER__TOKENS_HPP_
+#define TRANSCRIPT_MANAGER__TOKENS_HPP_
 
-#include <chrono>
 #include <string>
 #include <stdexcept>
-
-#include "whisper_util/chrono_utils.hpp"
 
 namespace whisper {
 
@@ -60,4 +57,4 @@ public:
 };
 
 } // end of namespace whisper
-#endif // TRANSCRIPT_MANAGER__TOKENS_AND_SEGMENTS_HPP_
+#endif // TRANSCRIPT_MANAGER__TOKENS_HPP_

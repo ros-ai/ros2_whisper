@@ -4,12 +4,14 @@ namespace whisper {
 TranscriptManager::TranscriptManager(const rclcpp::NodeOptions& options)
     : Node("transcript_manager", options) {
 
+  // Declare merge algorithm parameter
+  declare_parameter("allowed_lcs_gaps", 4);
+
   // Subscribe to incoming token data
   auto cb_group = create_callback_group(rclcpp::CallbackGroupType::Reentrant);
   rclcpp::SubscriptionOptions sub_options;
   sub_options.callback_group = cb_group;
-  tokens_sub_ = create_subscription<WhisperTokens>(
-    "tokens", rclcpp::SensorDataQoS(), 
+  tokens_sub_ = create_subscription<WhisperTokens>("tokens", 10,
     std::bind(&TranscriptManager::on_whisper_tokens_, this, std::placeholders::_1), sub_options);
 
   // Action Server
@@ -22,14 +24,14 @@ TranscriptManager::TranscriptManager(const rclcpp::NodeOptions& options)
 
   // Data Initialization
   incoming_queue_ = std::make_unique<ThreadSafeRing<std::vector<Segment>>>(10);
+  int allowed_lcs_gaps = get_parameter("allowed_lcs_gaps").as_int();
   // How to get a node pointer from a component:
   // https://robotics.stackexchange.com/questions/102145/how-to-initialize-image-transport-using-rclcpp
   rclcpp::Node::SharedPtr node_handle_ = std::shared_ptr<TranscriptManager>(this, [](auto *) {});
-  transcript_ = std::make_unique<Transcript>(4, node_handle_);
+  transcript_ = std::make_unique<Transcript>(allowed_lcs_gaps, node_handle_);
 
   // Outgoing data pub
   transcript_pub_ = create_publisher<AudioTranscript>("transcript_stream", 10);
-
   clear_queue_timer_ = create_wall_timer(std::chrono::milliseconds(1000), 
                 std::bind(&TranscriptManager::clear_queue_callback_, this), cb_group);
 }

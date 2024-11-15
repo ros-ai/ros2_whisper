@@ -18,7 +18,7 @@
 // Repo tools
 #include "whisper_util/audio_buffers.hpp"
 #include "whisper_util/chrono_utils.hpp"
-#include "transcript_manager/tokens_and_segments.hpp"
+#include "transcript_manager/tokens.hpp"
 #include "transcript_manager/words.hpp"
 #include "transcript_manager/segments.hpp"
 #include "transcript_manager/transcript.hpp"
@@ -40,7 +40,7 @@ public:
   TranscriptManager(const rclcpp::NodeOptions& options);
 
 protected:
-  // audio subscription
+  // whisper output subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
   std::vector<Segment> deserialize_msg_(const WhisperTokens::SharedPtr &msg);

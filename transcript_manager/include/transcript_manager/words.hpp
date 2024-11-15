@@ -7,7 +7,7 @@
 #include <optional>       // std::optional
 #include <stdexcept>      // std::runtime_error()
 
-#include "transcript_manager/tokens_and_segments.hpp"
+#include "transcript_manager/tokens.hpp"
 
 namespace whisper {
 
@@ -26,7 +26,6 @@ private:
   std::vector<int> word_occurances_;
   std::vector<bool> word_is_punct_;
   std::vector<float> word_probs_;
-  // std::optional<SegmentMetaData> segment_data_;
 
   // Calculated and cached
   std::vector<std::string> word_cache_;
@@ -45,18 +44,9 @@ public:
     add({token}, is_punct);
   };
 
-  // Word(const SegmentMetaData &segment_data) : segment_data_(segment_data) {
-  //   // word_occurances[0] is overloaded to indicate segment_occurances
-  //   add({{"", 1.0}}, false);
-  // };
-
   size_t size() const {
     return word_tokens_.size();
   }
-
-  // bool is_segment() const {
-  //   return segment_data_.has_value();
-  // }
 
   bool is_punct() const {
     return word_is_punct_[0];
@@ -68,9 +58,6 @@ public:
 
   void dec_best() {
     word_occurances_[0]--;
-    // if ( is_segment() ) {
-    //   return;
-    // }
 
     // Check for swap
     for (size_t i = 1; i < word_occurances_.size(); ++i) {
@@ -87,11 +74,9 @@ public:
     word_probs_.clear();
     word_cache_.clear();
     comparable_word_cache_.clear();
-    // segment_data_.reset();
   }
 
   std::string get_comparable() const {
-    // if ( is_punct() || is_segment() || word_occurances_[0] <= 0 ) {
     if ( is_punct() || word_occurances_[0] <= 0 ) {
       return "";
     }
@@ -99,9 +84,6 @@ public:
   }
 
   std::string get() const {
-    // if ( is_segment() ) {
-    //   return segment_data_->as_str();
-    // }
     return word_cache_[0];
   }
   
@@ -125,13 +107,8 @@ public:
   }
 
   std::vector<SingleToken> get_best_tokens() const {
-    // TODO return iterator
     return word_tokens_[0];
   }
-
-  // std::optional<SegmentMetaData> get_segment_data() const {
-  //   return segment_data_;
-  // }
 
   void add(std::vector<SingleToken> new_word, bool is_punct) {
     // TODO:  Insert in sorted set
@@ -181,10 +158,6 @@ public:
   }
 
   void compare(const Word &no_conflict_other) {
-    // if ( is_segment() || no_conflict_other.is_segment() ) {
-    //   return;
-    // }
-
     if ( auto [match_found, match_idx] = get_match(no_conflict_other.get()); match_found ) {
       // Average Probability
       word_probs_[match_idx] = (word_probs_[match_idx]*(word_occurances_[match_idx] - 1) +
@@ -202,29 +175,6 @@ public:
       }
     }
   }
-
-  // void merge_segments(const Word &no_conflict_other) {
-  //   if ( ! is_segment() || !no_conflict_other.is_segment() ) {
-  //     return;
-  //   }
-
-  //   const auto other_data = no_conflict_other.get_segment_data();
-  //   segment_data_->overwrite(*other_data);
-
-  //   // Increase likelyhood of the segmention
-  //   word_occurances_[0]++;
-  // }
-
-  // void overwrite(const Word &no_conflict_other) {
-  //   segment_data_->overwrite(*no_conflict_other.get_segment_data());
-  // }
-
-  // std::string get_segment_data_str() const {
-  //   if ( !is_segment() ) {
-  //     return "";
-  //   }
-  //   return segment_data_->as_str();
-  // }
 
   std::vector<int> get_top_n_ids(const int min_count) const {
     std::vector<int> top_n;
@@ -249,11 +199,6 @@ public:
         ss << "|";
       }
       ss << word_cache_[id];
-      // ss << " (";
-      // ss << std::setprecision(2) << word_probs_[id];
-      // ss << "\\";
-      // ss << word_occurances_[id];
-      // ss << ")";
       first_run = false;
     }
     ss <<  "}";
@@ -293,19 +238,6 @@ private:
       }
     }
   }
-
-public:
-  // SingleToken get_end_token() const { return segment_data_->get_end_token(); };
-  // std::chrono::milliseconds get_duration() const { return segment_data_->get_duration(); };
-  // std::chrono::system_clock::time_point get_start() const { return segment_data_->get_start(); };
-
-  // void set_end_token(const SingleToken end_token) { segment_data_->set_end_token(end_token); };
-  // void set_duration(const std::chrono::milliseconds duration) { segment_data_->set_duration(duration); };
-  // void set_start(const std::chrono::system_clock::time_point segment_start) 
-  //                                                 { segment_data_->set_start(segment_start); };
-
-  // std::string as_str() const { return segment_data_->as_str(); };
-  // std::string as_timestamp_str() const { return segment_data_->as_timestamp_str(); };
 };
 
 

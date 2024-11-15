@@ -40,24 +40,12 @@ protected:
   // audio subscription
   rclcpp::Subscription<std_msgs::msg::Int16MultiArray>::SharedPtr audio_sub_;
   void on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg);
-  void on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg);
-
-  // action server
-  // rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
-  // rclcpp_action::GoalResponse on_inference_(const rclcpp_action::GoalUUID &uuid,
-  //                                           std::shared_ptr<const Inference::Goal> goal);
-  // rclcpp_action::CancelResponse
-  // on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  // void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  // rclcpp::Time inference_start_time_;
 
   // publsiher
-  bool active_;
   void timer_callback();
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<whisper_idl::msg::WhisperTokens>::SharedPtr publisher_;
   whisper_idl::msg::WhisperTokens create_message_();
-  rclcpp::Time last_success_timestamp;
 
   // whisper
   std::unique_ptr<ModelManager> model_manager_;
@@ -65,14 +53,20 @@ protected:
   std::mutex whisper_mutex_;
   std::string language_;
   void initialize_whisper_();
-  void inference_(const std::vector<float> &audio, whisper_idl::msg::WhisperTokens &result);
-  // Try-run inference_, return false if whisper is busy.
+  
   bool run_inference_(whisper_idl::msg::WhisperTokens &result);
+  void inference_(const std::vector<float> &audio, whisper_idl::msg::WhisperTokens &result);
 
 private:
   // Data
   std::chrono::milliseconds update_ms_;
   std::unique_ptr<AudioRing> audio_ring_;
+
+  // Control if whisper is running
+  bool active_;
+
+  // Helper/debug functions
+  void on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg);
 
 };
 } // end of namespace whisper
