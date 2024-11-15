@@ -96,12 +96,16 @@ public:
     occ--;
   }
 
-  std::string as_str() const {
-    auto ret = data_.as_str() + ":  ";
+  std::string get_words() const {
+    std::string ret;
     for (const auto& word : words_) {
       ret += word.get();
     }
     return ret;
+  }
+
+  std::string as_str() const {
+    return data_.as_str() + ":  " + get_words();
   }
 
   std::string as_timestamp_str() const {

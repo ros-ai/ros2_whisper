@@ -28,7 +28,7 @@ TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_
   transcript_pub_ = node_ptr_->create_publisher<AudioTranscript>("transcript_stream", 10);
 
   clear_queue_timer_ = node_ptr_->create_wall_timer(std::chrono::milliseconds(1000), 
-                std::bind(&TranscriptManagerNode::clear_queue_callback_, this));
+                std::bind(&TranscriptManagerNode::clear_queue_callback_, this), cb_group);
 }
 
 void TranscriptManagerNode::clear_queue_callback_() {
@@ -68,51 +68,65 @@ void TranscriptManagerNode::on_inference_accepted_(
   auto result = std::make_shared<Inference::Result>();
   inference_start_time_ = node_ptr_->now();
   auto batch_idx = 0;
+  transcript_->clear();
+  size_t last_stale_seg = transcript_->get_stale_segment();
+
+  // Helper lambda function
+  auto fill_result = [this, &result](const std::string& info_msg, const size_t last_stale_seg) {
+    result->info = info_msg;
+    RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+    for (auto it = transcript_->segments_begin() + last_stale_seg;
+                              it != transcript_->segments_end(); ++it) {
+      result->transcriptions.push_back(it->get_words());
+    }
+  };
+
   while (rclcpp::ok()) {
     if ( node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration ) {
-      result->info = "Inference timed out.";
-      RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+      fill_result(std::string("Inference timed out."), last_stale_seg);
       goal_handle->succeed(result);
       return;
     }
 
     if ( goal_handle->is_canceling() ) {
-      result->info = "Inference cancelled.";
-      RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+      fill_result(std::string("Inference cancelled."), last_stale_seg);
       goal_handle->canceled(result);
       return;
     }
 
-    // Wait for other thread
-    while (incoming_queue_->empty()) {
-      rclcpp::sleep_for(std::chrono::milliseconds(15));
-    }
-
-    // Clear queue
-    std::string message;
-    while (!incoming_queue_->empty()) {
-      const auto segments = incoming_queue_->dequeue();
-      for (const auto &seg : segments) {
-          message += seg.as_str() + "\n";
+    // Check for changes on the stale segment marker
+    size_t new_stale_segment = transcript_->get_stale_segment();
+    if ( last_stale_seg != new_stale_segment ) {
+      // Add fialized transcription to result
+      for (auto it = transcript_->segments_begin() + last_stale_seg;
+                                it < transcript_->segments_begin() + new_stale_segment; ++it) {
+        result->transcriptions.push_back(it->get_words());
       }
+      last_stale_seg = new_stale_segment;
     }
 
-    feedback->transcription = message;
+    // Give feedback of active transcription
+    std::string active_transcript;
+    for (auto it = transcript_->segments_begin() + last_stale_seg;
+                              it != transcript_->segments_end(); ++it) {
+      active_transcript += it->get_words();
+    }
+
+    feedback->transcription = active_transcript;
     feedback->batch_idx = batch_idx;
     goal_handle->publish_feedback(feedback);
-    result->transcriptions.push_back(feedback->transcription);
-    RCLCPP_INFO(node_ptr_->get_logger(), "Batch %d", batch_idx);
     ++batch_idx;
+
+    rclcpp::sleep_for(std::chrono::milliseconds(250));
   }
 
   if ( rclcpp::ok() ) {
-    result->info = "Inference succeeded.";
-    RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+    fill_result(std::string("Inference succeeded."), last_stale_seg);
     goal_handle->succeed(result);
   }
 }
 
-void TranscriptManagerNode::clear_queue_() {
+bool TranscriptManagerNode::clear_queue_() {
   bool one_merged = false;
   while ( !incoming_queue_->empty() ) {
     one_merged = true;
@@ -129,6 +143,7 @@ void TranscriptManagerNode::clear_queue_() {
     // const auto print_str = transcript_->get_print_str();
     // RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s\n", print_str.c_str());
   }
+  return one_merged;
 }
 
 void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {

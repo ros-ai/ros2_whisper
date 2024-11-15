@@ -102,6 +102,9 @@ public:
 
   // every segment starting before time_thresh will no longer be altered
   void set_stale_segment(std::chrono::system_clock::time_point time_thresh);
+  void clear() { segments_.clear(); stale_segment_ = 0; };
+  size_t get_stale_segment() const { return stale_segment_; };
+  size_t size() const { return segments_.size(); };
   
   // void set_stale_word_id(const int stale_id) { stale_id_ = stale_id; }
   // Set the stale section to the current time minus ... seconds

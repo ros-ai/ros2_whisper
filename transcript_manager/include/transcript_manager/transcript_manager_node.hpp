@@ -62,7 +62,7 @@ protected:
 
   // Callback to merge incoming queue into transcript
   void clear_queue_callback_();
-  void clear_queue_();
+  bool clear_queue_();
   rclcpp::TimerBase::SharedPtr clear_queue_timer_;
 
   // Outgoing continuous audio transcription publishing
