@@ -23,16 +23,14 @@
 
 namespace whisper {
 
-class InferenceNode {
-  using Inference = whisper_idl::action::Inference;
-  using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
+class Inference : public rclcpp::Node {
+  // using Inference = whisper_idl::action::Inference;
+  // using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
 
 public:
-  InferenceNode(const rclcpp::Node::SharedPtr node_ptr);
+  Inference(const rclcpp::NodeOptions& options);
 
 protected:
-  rclcpp::Node::SharedPtr node_ptr_;
-
   // parameters
   void declare_parameters_();
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr on_parameter_set_handle_;
@@ -45,13 +43,13 @@ protected:
   void on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg);
 
   // action server
-  rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
-  rclcpp_action::GoalResponse on_inference_(const rclcpp_action::GoalUUID &uuid,
-                                            std::shared_ptr<const Inference::Goal> goal);
-  rclcpp_action::CancelResponse
-  on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
-  rclcpp::Time inference_start_time_;
+  // rclcpp_action::Server<Inference>::SharedPtr inference_action_server_;
+  // rclcpp_action::GoalResponse on_inference_(const rclcpp_action::GoalUUID &uuid,
+  //                                           std::shared_ptr<const Inference::Goal> goal);
+  // rclcpp_action::CancelResponse
+  // on_cancel_inference_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  // void on_inference_accepted_(const std::shared_ptr<GoalHandleInference> goal_handle);
+  // rclcpp::Time inference_start_time_;
 
   // publsiher
   bool active_;
@@ -71,7 +69,7 @@ protected:
   // Try-run inference_, return false if whisper is busy.
   bool run_inference_(whisper_idl::msg::WhisperTokens &result);
 
-
+private:
   // Data
   std::chrono::milliseconds update_ms_;
   std::unique_ptr<AudioRing> audio_ring_;

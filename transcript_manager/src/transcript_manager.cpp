@@ -1,72 +1,75 @@
-#include "transcript_manager/transcript_manager_node.hpp"
+#include "transcript_manager/transcript_manager.hpp"
 
 namespace whisper {
-TranscriptManagerNode::TranscriptManagerNode(const rclcpp::Node::SharedPtr node_ptr)
-    : node_ptr_(node_ptr) {
+TranscriptManager::TranscriptManager(const rclcpp::NodeOptions& options)
+    : Node("transcript_manager", options) {
 
   // Subscribe to incoming token data
-  auto cb_group = node_ptr_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-  rclcpp::SubscriptionOptions options;
-  options.callback_group = cb_group;
-  tokens_sub_ = node_ptr_->create_subscription<WhisperTokens>(
+  auto cb_group = create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  rclcpp::SubscriptionOptions sub_options;
+  sub_options.callback_group = cb_group;
+  tokens_sub_ = create_subscription<WhisperTokens>(
     "tokens", rclcpp::SensorDataQoS(), 
-    std::bind(&TranscriptManagerNode::on_whisper_tokens_, this, std::placeholders::_1), options);
+    std::bind(&TranscriptManager::on_whisper_tokens_, this, std::placeholders::_1), sub_options);
 
   // Action Server
   inference_action_server_ = rclcpp_action::create_server<Inference>(
-    node_ptr_, "inference",
-    std::bind(&TranscriptManagerNode::on_inference_, this, 
+    this, "inference",
+    std::bind(&TranscriptManager::on_inference_, this, 
                                           std::placeholders::_1, std::placeholders::_2),
-    std::bind(&TranscriptManagerNode::on_cancel_inference_, this, std::placeholders::_1),
-    std::bind(&TranscriptManagerNode::on_inference_accepted_, this, std::placeholders::_1));
+    std::bind(&TranscriptManager::on_cancel_inference_, this, std::placeholders::_1),
+    std::bind(&TranscriptManager::on_inference_accepted_, this, std::placeholders::_1));
 
   // Data Initialization
   incoming_queue_ = std::make_unique<ThreadSafeRing<std::vector<Segment>>>(10);
-  transcript_ = std::make_unique<Transcript>(4, node_ptr);
+  // How to get a node pointer from a component:
+  // https://robotics.stackexchange.com/questions/102145/how-to-initialize-image-transport-using-rclcpp
+  rclcpp::Node::SharedPtr node_handle_ = std::shared_ptr<TranscriptManager>(this, [](auto *) {});
+  transcript_ = std::make_unique<Transcript>(4, node_handle_);
 
   // Outgoing data pub
-  transcript_pub_ = node_ptr_->create_publisher<AudioTranscript>("transcript_stream", 10);
+  transcript_pub_ = create_publisher<AudioTranscript>("transcript_stream", 10);
 
-  clear_queue_timer_ = node_ptr_->create_wall_timer(std::chrono::milliseconds(1000), 
-                std::bind(&TranscriptManagerNode::clear_queue_callback_, this), cb_group);
+  clear_queue_timer_ = create_wall_timer(std::chrono::milliseconds(1000), 
+                std::bind(&TranscriptManager::clear_queue_callback_, this), cb_group);
 }
 
-void TranscriptManagerNode::clear_queue_callback_() {
+void TranscriptManager::clear_queue_callback_() {
   clear_queue_();
 }
 
-void TranscriptManagerNode::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
+void TranscriptManager::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
   // print_msg_(msg);
   const auto &words_and_segments = deserialize_msg_(msg);
   // print_new_words_(words_and_segments);
 
   incoming_queue_->enqueue(words_and_segments);
   if (incoming_queue_->almost_full()) {
-    auto& clk = *node_ptr_->get_clock();
-    RCLCPP_WARN_THROTTLE(node_ptr_->get_logger(), clk, 5000,
+    auto& clk = *get_clock();
+    RCLCPP_WARN_THROTTLE(get_logger(), clk, 5000,
                              "Transcripiton buffer full.  Dropping data.");
   }
 }
 
-rclcpp_action::GoalResponse TranscriptManagerNode::on_inference_(
+rclcpp_action::GoalResponse TranscriptManager::on_inference_(
                               const rclcpp_action::GoalUUID & /*uuid*/,
                              std::shared_ptr<const Inference::Goal> /*goal*/) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Received inference request.");
+  RCLCPP_INFO(get_logger(), "Received inference request.");
   return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
 
-rclcpp_action::CancelResponse TranscriptManagerNode::on_cancel_inference_(
+rclcpp_action::CancelResponse TranscriptManager::on_cancel_inference_(
             const std::shared_ptr<GoalHandleInference> /*goal_handle*/) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Cancelling inference...");
+  RCLCPP_INFO(get_logger(), "Cancelling inference...");
   return rclcpp_action::CancelResponse::ACCEPT;
 }
 
-void TranscriptManagerNode::on_inference_accepted_(
+void TranscriptManager::on_inference_accepted_(
                           const std::shared_ptr<GoalHandleInference> goal_handle) {
-  RCLCPP_INFO(node_ptr_->get_logger(), "Starting inference...");
+  RCLCPP_INFO(get_logger(), "Starting inference...");
   auto feedback = std::make_shared<Inference::Feedback>();
   auto result = std::make_shared<Inference::Result>();
-  inference_start_time_ = node_ptr_->now();
+  inference_start_time_ = now();
   auto batch_idx = 0;
   transcript_->clear();
   size_t last_stale_seg = transcript_->get_stale_segment();
@@ -74,7 +77,7 @@ void TranscriptManagerNode::on_inference_accepted_(
   // Helper lambda function
   auto fill_result = [this, &result](const std::string& info_msg, const size_t last_stale_seg) {
     result->info = info_msg;
-    RCLCPP_INFO(node_ptr_->get_logger(), result->info.c_str());
+    RCLCPP_INFO(get_logger(), result->info.c_str());
     for (auto it = transcript_->segments_begin() + last_stale_seg;
                               it != transcript_->segments_end(); ++it) {
       result->transcriptions.push_back(it->get_words());
@@ -82,7 +85,7 @@ void TranscriptManagerNode::on_inference_accepted_(
   };
 
   while (rclcpp::ok()) {
-    if ( node_ptr_->now() - inference_start_time_ > goal_handle->get_goal()->max_duration ) {
+    if ( now() - inference_start_time_ > goal_handle->get_goal()->max_duration ) {
       fill_result(std::string("Inference timed out."), last_stale_seg);
       goal_handle->succeed(result);
       return;
@@ -126,7 +129,7 @@ void TranscriptManagerNode::on_inference_accepted_(
   }
 }
 
-bool TranscriptManagerNode::clear_queue_() {
+bool TranscriptManager::clear_queue_() {
   bool one_merged = false;
   while ( !incoming_queue_->empty() ) {
     one_merged = true;
@@ -141,12 +144,12 @@ bool TranscriptManagerNode::clear_queue_() {
     transcript_pub_->publish(message);
 
     // const auto print_str = transcript_->get_print_str();
-    // RCLCPP_INFO(node_ptr_->get_logger(), "Current Transcript:   \n%s\n", print_str.c_str());
+    // RCLCPP_INFO(get_logger(), "Current Transcript:   \n%s\n", print_str.c_str());
   }
   return one_merged;
 }
 
-void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {
+void TranscriptManager::serialize_transcript_(AudioTranscript &msg) {
   size_t stale_counter = 0;
   size_t segment_count = 0;
   size_t stale_segment_id = transcript_->get_stale_seg_id();
@@ -169,7 +172,7 @@ void TranscriptManagerNode::serialize_transcript_(AudioTranscript &msg) {
 }
 
 std::vector<Segment> 
-    TranscriptManagerNode::deserialize_msg_(const WhisperTokens::SharedPtr &msg) {
+    TranscriptManager::deserialize_msg_(const WhisperTokens::SharedPtr &msg) {
   std::vector<SingleToken> word_wip;
   Segment segment_wip;
   std::vector<Segment> segments;
@@ -264,7 +267,7 @@ std::vector<Segment>
 // 
 // Helper Functions
 //
-bool TranscriptManagerNode::is_special_token(const std::vector<std::string> &tokens, 
+bool TranscriptManager::is_special_token(const std::vector<std::string> &tokens, 
                                                                           const int idx) {
   const std::vector<std::string> special_token_start_strs = {
       "[_BEG_]", "[_TT_", " [_BEG_]", " [_TT_"
@@ -277,7 +280,7 @@ bool TranscriptManagerNode::is_special_token(const std::vector<std::string> &tok
   return false;
 }
 
-bool TranscriptManagerNode::my_ispunct(const std::vector<std::string> &tokens, const int idx) {
+bool TranscriptManager::my_ispunct(const std::vector<std::string> &tokens, const int idx) {
   // The reason for not using std::punct(..) on the first character is that "'t" would 
   //    be considered a punctuation.
   // As well as some brackets which should be combined into words.
@@ -286,7 +289,7 @@ bool TranscriptManagerNode::my_ispunct(const std::vector<std::string> &tokens, c
   return std::find(punctuations.begin(), punctuations.end(), tokens[idx]) != punctuations.end();
 }
 
-bool TranscriptManagerNode::contains_char(const std::string &str, const char target) {
+bool TranscriptManager::contains_char(const std::string &str, const char target) {
   for (const auto &c : str) {
     if ( target == c ) {
       return true;
@@ -295,7 +298,7 @@ bool TranscriptManagerNode::contains_char(const std::string &str, const char tar
   return false;
 }
 
-std::pair<bool, int> TranscriptManagerNode::join_tokens(const std::vector<std::string> &tokens, 
+std::pair<bool, int> TranscriptManager::join_tokens(const std::vector<std::string> &tokens, 
                                                                                 const int idx) {
   // Check if, starting from the idx, the tokens are a bracket which can be combined or removed
   //   Return:
@@ -325,7 +328,7 @@ std::pair<bool, int> TranscriptManagerNode::join_tokens(const std::vector<std::s
   return {false, 0};
 }
 
-std::string TranscriptManagerNode::combine_text(const std::vector<std::string> &tokens, 
+std::string TranscriptManager::combine_text(const std::vector<std::string> &tokens, 
                                                       const int idx, const int num) {
   std::string ret = "";
   for (auto i = idx; i < idx + num; ++i) {
@@ -334,7 +337,7 @@ std::string TranscriptManagerNode::combine_text(const std::vector<std::string> &
   return ret;
 }
 
-float TranscriptManagerNode::combine_prob(const std::vector<float> &probs, 
+float TranscriptManager::combine_prob(const std::vector<float> &probs, 
                                                       const int idx, const int num) {
   float ret = 0.;
   for (auto i = idx; i < idx + num; ++i) {
@@ -349,7 +352,7 @@ float TranscriptManagerNode::combine_prob(const std::vector<float> &probs,
 // Print Functions
 //
 
-void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
+void TranscriptManager::print_msg_(const WhisperTokens::SharedPtr &msg) {
   std::string print_str;
 
   print_str += "Inference Duration:  ";
@@ -405,15 +408,19 @@ void TranscriptManagerNode::print_msg_(const WhisperTokens::SharedPtr &msg) {
   }
 
   print_str += "\n";
-  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
+  RCLCPP_INFO(get_logger(), "%s", print_str.c_str());
 }
 
 
-void TranscriptManagerNode::print_new_words_(const std::vector<Segment> &new_words) {
+void TranscriptManager::print_new_words_(const std::vector<Segment> &new_words) {
   std::string print_str;
   for (const auto& seg : new_words) {
     print_str += seg.as_str() + "\n";
   }
-  RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
+  RCLCPP_INFO(get_logger(), "%s", print_str.c_str());
 }
 } // end of namespace whisper
+
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(whisper::TranscriptManager)

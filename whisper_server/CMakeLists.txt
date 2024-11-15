@@ -29,53 +29,54 @@ foreach(DEPENDENCY IN LISTS WHISPER_NODES_DEPENDENCIES)
 endforeach()
 
 # whisper nodes
-add_library(${PROJECT_NAME} SHARED
-  src/inference_node.cpp
-)
+# add_library(${PROJECT_NAME} SHARED
+#   src/inference_node.cpp
+# )
 
-ament_target_dependencies(${PROJECT_NAME}
-  ${WHISPER_NODES_DEPENDENCIES}
-)
+# ament_target_dependencies(${PROJECT_NAME}
+#   ${WHISPER_NODES_DEPENDENCIES}
+# )
 
-target_include_directories(${PROJECT_NAME}
+# target_include_directories(${PROJECT_NAME}
+#   PUBLIC
+#     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#     $<INSTALL_INTERFACE:include>
+# )
+
+# ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
+# ament_export_dependencies(
+#   ${WHISPER_NODES_DEPENDENCIES}
+# )
+
+# install(
+#   DIRECTORY include/
+#   DESTINATION include
+# )
+
+# install(
+#   TARGETS ${PROJECT_NAME}
+#   EXPORT export_${PROJECT_NAME}
+#   LIBRARY DESTINATION lib
+#   INCLUDES DESTINATION include
+# )
+
+# whisper component
+add_library(inference_component SHARED
+  src/inference.cpp
+)
+target_include_directories(inference_component
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-
-ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(
-  ${WHISPER_NODES_DEPENDENCIES}
-)
-
-install(
-  DIRECTORY include/
-  DESTINATION include
-)
-
-install(
-  TARGETS ${PROJECT_NAME}
-  EXPORT export_${PROJECT_NAME}
-  LIBRARY DESTINATION lib
-  INCLUDES DESTINATION include
-)
-
-# whisper component
-add_library(inference_component SHARED
-  src/inference_component.cpp
-)
-
 ament_target_dependencies(inference_component
   rclcpp
   rclcpp_components
-)
-
-target_link_libraries(inference_component
-  ${PROJECT_NAME}
+  ${WHISPER_NODES_DEPENDENCIES}
 )
 
 rclcpp_components_register_node(inference_component
-  PLUGIN whisper::InferenceComponent
+  PLUGIN whisper::Inference
   EXECUTABLE whisper
 )
 

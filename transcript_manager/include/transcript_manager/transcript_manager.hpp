@@ -1,25 +1,21 @@
-#ifndef TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_
-#define TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_
+#ifndef TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_HPP_
+#define TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_HPP_
 
-#include <chrono>
-// #include <memory>
-// #include <numeric>
-// #include <stdexcept>
 #include <string>
 #include <vector>
+#include <memory>   // std::unique_ptr
 #include <utility>  // std::pair
-// #include <mutex>
 
-// #include "rcl_interfaces/msg/set_parameters_result.hpp"
+// ROS 2
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
-#include <builtin_interfaces/msg/time.hpp>
-// #include "std_msgs/msg/int16_multi_array.hpp"
 
+// Repo Messages/Actions
 #include "whisper_idl/action/inference.hpp"
 #include "whisper_idl/msg/whisper_tokens.hpp"
 #include "whisper_idl/msg/audio_transcript.hpp" 
 
+// Repo tools
 #include "whisper_util/audio_buffers.hpp"
 #include "whisper_util/chrono_utils.hpp"
 #include "transcript_manager/tokens_and_segments.hpp"
@@ -29,23 +25,21 @@
 
 namespace whisper {
 
-class TranscriptManagerNode {
+class TranscriptManager : public rclcpp::Node {
   using Inference = whisper_idl::action::Inference;
   using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
   using WhisperTokens = whisper_idl::msg::WhisperTokens;
   using AudioTranscript = whisper_idl::msg::AudioTranscript;
 
+  // Whisper gives duration info on segments which are related to ms by a ratio
   const int whisper_ts_to_ms_ratio = 10;
   // Setting for how many tokens within brackets (e.g. "[ .. ]") could be combined
   const int max_number_tokens_to_combine = 10;
 
-
 public:
-  TranscriptManagerNode(const rclcpp::Node::SharedPtr node_ptr);
+  TranscriptManager(const rclcpp::NodeOptions& options);
 
 protected:
-  rclcpp::Node::SharedPtr node_ptr_;
-
   // audio subscription
   rclcpp::Subscription<WhisperTokens>::SharedPtr tokens_sub_;
   void on_whisper_tokens_(const WhisperTokens::SharedPtr msg);
@@ -87,4 +81,4 @@ private:
   void print_new_words_(const std::vector<Segment> &new_words);
 };
 } // end of namespace whisper
-#endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_NODE_HPP_
+#endif // TRANSCRIPT_MANAGER__TRANSCRIPT_MANAGER_HPP_

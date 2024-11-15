@@ -50,7 +50,7 @@ def generate_launch_description() -> LaunchDescription:
                 # Whisper
                 ComposableNode(
                     package='whisper_server',
-                    plugin='whisper::InferenceComponent',
+                    plugin='whisper::Inference',
                     name='inference',
                     namespace="whisper",
                     # parameters=[whisper_config, {'active': False}],
@@ -61,7 +61,7 @@ def generate_launch_description() -> LaunchDescription:
                 # Transcript manager
                 ComposableNode(
                     package='transcript_manager',
-                    plugin='whisper::TranscriptManagerComponent',
+                    plugin='whisper::TranscriptManager',
                     name='transcript_manager',
                     namespace="whisper",
                 ),
