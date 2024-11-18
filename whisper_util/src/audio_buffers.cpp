@@ -9,6 +9,7 @@ AudioRing::AudioRing(const std::chrono::milliseconds &buffer_capacity,
   clear();
   set_start_timestamp(cur_time);
 }
+
 AudioRing::AudioRing(const std::chrono::milliseconds &buffer_capacity)
                                 : ThreadSafeRing<std::int16_t>(time_to_count(buffer_capacity)),
                                 time_inc_(count_to_time_ns(1)), audio_start_set(false) {

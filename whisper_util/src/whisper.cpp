@@ -12,7 +12,7 @@ void Whisper::initialize(const std::string &model_path) {
 }
 
 std::string Whisper::forward(const std::vector<float> &input) {
-  if (whisper_full(ctx, wparams, input.data(), input.size()) != 0) {
+  if ( whisper_full(ctx, wparams, input.data(), input.size()) != 0 ) {
     return {};
   }
   std::vector<std::string> segments;
@@ -36,7 +36,7 @@ std::vector<whisper_token> Whisper::tokens() {
 }
 
 
-void Whisper::forward_tokenize(
+void Whisper::forward_serialize(
                   const std::vector<float> &input,
                   std::vector<int> &token_ids,
                   std::vector<std::string> &token_texts,
@@ -46,7 +46,7 @@ void Whisper::forward_tokenize(
                   std::vector<int64_t> &segment_end_timestamp
                 ) {
   // Perform whisper inference
-  if (whisper_full(ctx, wparams, input.data(), input.size()) != 0) {
+  if ( whisper_full(ctx, wparams, input.data(), input.size()) != 0 ) {
     return;
   }
 

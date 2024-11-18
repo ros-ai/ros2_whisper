@@ -57,21 +57,21 @@ public:
   void run(Operations &operations);                                       // run subset
 
 private:
-  void inc_word(const index id);
-  void dec_word(const index id);
-  void del_word(const index id);
-  void insert_word(const index id, const std::vector<Segment> &other, const index other_id);
-  void conflict_word(const index id, const std::vector<Segment> &other, const index other_id);
+  void inc_word_(const index id);
+  void dec_word_(const index id);
+  void del_word_(const index id);
+  void insert_word_(const index id, const std::vector<Segment> &other, const index other_id);
+  void conflict_word_(const index id, const std::vector<Segment> &other, const index other_id);
 
-  void inc_segment(const index id);
-  void dec_segment(const index id);
-  bool del_segment(const index id);
-  bool insert_segment(const index id, const std::vector<Segment> &other,const index other_id);
-  void merge_segments(const index id, const std::vector<Segment> &other, const index other_id);
+  void inc_segment_(const index id);
+  void dec_segment_(const index id);
+  bool del_segment_(const index id);
+  bool insert_segment_(const index id, const std::vector<Segment> &other,const index other_id);
+  void merge_segments_(const index id, const std::vector<Segment> &other, const index other_id);
 
   // Helper functions
-  bool seg_id_check(const index &id, const std::vector<Segment>& segs, bool push_back = false);
-  bool word_id_check(const index &id, const std::vector<Segment>& segs, bool push_back = false);
+  bool seg_id_check_(const index &id, const std::vector<Segment>& segs, bool push_back = false);
+  bool word_id_check_(const index &id, const std::vector<Segment>& segs, bool push_back = false);
 
 public:
   Transcript(const int allowed_gaps, const rclcpp::Node::SharedPtr node_ptr): 
@@ -81,16 +81,15 @@ public:
   void push_back(const std::vector<Segment> &other);
   void clear_mistakes(const int occurrence_threshold);
   std::string get_print_str();
+  // every segment starting before time_thresh will no longer be altered
   void set_stale_segment(std::chrono::system_clock::time_point time_thresh);
 
   // Utilities:
-  bool empty() const { return segments_.empty(); }
-  size_t get_stale_seg_id() const { return stale_segment_; }
-
-  // every segment starting before time_thresh will no longer be altered
-  void clear() { segments_.clear(); stale_segment_ = 0; };
-  size_t get_stale_segment() const { return stale_segment_; };
-  size_t size() const { return segments_.size(); };
+  inline bool empty() const { return segments_.empty(); }
+  inline size_t get_stale_seg_id() const { return stale_segment_; }
+  inline void clear() { segments_.clear(); stale_segment_ = 0; };
+  inline size_t get_stale_segment() const { return stale_segment_; };
+  inline size_t size() const { return segments_.size(); };
 
   // Provide access to the const iterator
   using const_seg_iterator = typename std::vector<Segment>::const_iterator;
@@ -98,7 +97,7 @@ public:
   const_seg_iterator segments_end() const { return segments_.cend(); }
 
   // transcript_algorithms.cpp
-  void merge_one_(const std::vector<Segment> &other);
+  void merge_one(const std::vector<Segment> &other);
 
 private:
   // Longest common substring (allowing gaps for conflicting words)

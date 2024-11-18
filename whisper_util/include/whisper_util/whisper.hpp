@@ -17,7 +17,9 @@ public:
   void initialize(const std::string &model_path);
   std::string forward(const std::vector<float> &input);
   std::vector<whisper_token> tokens();
-  void forward_tokenize(
+
+  // Run whisper forword on input and serialize the result into WhisperTokens.msg fields
+  void forward_serialize(
                   const std::vector<float> &input,
                   std::vector<int> &token_ids,
                   std::vector<std::string> &token_texts,

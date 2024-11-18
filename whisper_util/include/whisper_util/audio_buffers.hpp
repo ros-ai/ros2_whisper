@@ -55,8 +55,6 @@ protected:
   std::size_t size_;
 };
 
-
-
 /**
  * @brief Implementation of thread-safe behavior.
  * Inherits from RingBuffer and adds mutex protection for concurrent access.
@@ -76,15 +74,14 @@ public:
   void clear();
 
 protected:
-  // Allow mutex to be grabbed in const context
+  // mutable keyword: Allow mutex to be grabbed in const context
   mutable std::mutex mutex_;
 };
-
 
 /**
  * @brief A thread-safe buffer for storing audio data. The user enqueues data from an audio stream
  * in thread A and reads a copy of the data (peak) in thread B. 
- * When buffer is full overwrite oldest data, so buffer contents are always the  newest data in
+ * When buffer is full overwrite oldest data, so buffer contents are always the newest data in
  * the stream.
  *
  * Thread A: enqueue into _buffer 
@@ -124,8 +121,6 @@ public:
   }
 };
 
-
-
 /**
  * Implementations -- RingBuffer.cpp
 **/
@@ -138,7 +133,7 @@ RingBuffer<value_type>::RingBuffer(const std::size_t &capacity)
 
 template <typename value_type> void RingBuffer<value_type>::enqueue(const_reference data) {
   increment_head_();
-  if (is_full()) {
+  if ( is_full() ) {
     increment_tail_();
   }
   buffer_[head_] = data;
@@ -158,14 +153,14 @@ template <typename value_type> void RingBuffer<value_type>::clear() {
 template <typename value_type> void RingBuffer<value_type>::increment_head_() {
   ++head_;
   ++size_;
-  if (head_ >= capacity_) {
+  if ( head_ >= capacity_ ) {
     head_ = 0;
   }
 }
 template <typename value_type> void RingBuffer<value_type>::increment_tail_() {
   ++tail_;
   --size_;
-  if (tail_ >= capacity_) {
+  if ( tail_ >= capacity_ ) {
     tail_ = 0;
   }
 }

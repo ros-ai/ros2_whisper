@@ -33,20 +33,16 @@ TranscriptManager::TranscriptManager(const rclcpp::NodeOptions& options)
   // Outgoing data pub
   transcript_pub_ = create_publisher<AudioTranscript>("transcript_stream", 10);
   clear_queue_timer_ = create_wall_timer(std::chrono::milliseconds(1000), 
-                std::bind(&TranscriptManager::clear_queue_callback_, this), cb_group);
-}
-
-void TranscriptManager::clear_queue_callback_() {
-  clear_queue_();
+                std::bind(&TranscriptManager::clear_queue_, this), cb_group);
 }
 
 void TranscriptManager::on_whisper_tokens_(const WhisperTokens::SharedPtr msg) {
-  // print_msg_(msg);
+  print_msg_(msg);
   const auto &words_and_segments = deserialize_msg_(msg);
-  // print_new_words_(words_and_segments);
+  print_new_words_(words_and_segments);
 
   incoming_queue_->enqueue(words_and_segments);
-  if (incoming_queue_->almost_full()) {
+  if ( incoming_queue_->almost_full() ) {
     auto& clk = *get_clock();
     RCLCPP_WARN_THROTTLE(get_logger(), clk, 5000,
                              "Transcripiton buffer full.  Dropping data.");
@@ -136,7 +132,7 @@ bool TranscriptManager::clear_queue_() {
   while ( !incoming_queue_->empty() ) {
     one_merged = true;
     const auto words_and_segments = incoming_queue_->dequeue();
-    transcript_->merge_one_(words_and_segments);
+    transcript_->merge_one(words_and_segments);
   }
 
   if ( one_merged ) {
@@ -145,8 +141,8 @@ bool TranscriptManager::clear_queue_() {
     serialize_transcript_(message);
     transcript_pub_->publish(message);
 
-    // const auto print_str = transcript_->get_print_str();
-    // RCLCPP_INFO(get_logger(), "Current Transcript:   \n%s\n", print_str.c_str());
+    RCLCPP_DEBUG(get_logger(), "Current Transcript:   \n%s\n", 
+                                    transcript_->get_print_str().c_str());
   }
   return one_merged;
 }
@@ -165,7 +161,7 @@ void TranscriptManager::serialize_transcript_(AudioTranscript &msg) {
       msg.probs.push_back(word.get_prob());
       msg.occ.push_back(word.get_occurrences());
     }
-    if (segment_count < stale_segment_id) {
+    if ( segment_count < stale_segment_id ) {
       stale_counter += segment.words_.size();
     }
     segment_count++;
@@ -348,8 +344,6 @@ float TranscriptManager::combine_prob(const std::vector<float> &probs,
   return ret / num;
 }
 
-
-
 // 
 // Print Functions
 //
@@ -373,17 +367,17 @@ void TranscriptManager::print_msg_(const WhisperTokens::SharedPtr &msg) {
   for (size_t i=0; i<msg->token_texts.size(); ++i) {
 
     // If token is start of new segment
-    if (static_cast<size_t>(segment_ptr) < msg->segment_start_token_idxs.size() && 
-              i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr])) {
+    if ( static_cast<size_t>(segment_ptr) < msg->segment_start_token_idxs.size() && 
+              i == static_cast<size_t>(msg->segment_start_token_idxs[segment_ptr]) ) {
 
       // First segment
-      if (segment_ptr != 0) {
+      if ( segment_ptr != 0 ) {
         print_str += "\n"; 
       }
 
       // Last segment
       int segment_tokens;
-      if (static_cast<size_t>(segment_ptr + 1) == msg->segment_start_token_idxs.size()) {
+      if ( static_cast<size_t>(segment_ptr + 1) == msg->segment_start_token_idxs.size() ) {
         segment_tokens = msg->token_texts.size() - msg->segment_start_token_idxs[segment_ptr];
       } else {
         segment_tokens = msg->segment_start_token_idxs[segment_ptr + 1] - 
@@ -401,7 +395,7 @@ void TranscriptManager::print_msg_(const WhisperTokens::SharedPtr &msg) {
       ++segment_ptr;
     }
 
-    if (!first_token) {
+    if ( !first_token ) {
       print_str += "|";
     }
 
@@ -410,7 +404,7 @@ void TranscriptManager::print_msg_(const WhisperTokens::SharedPtr &msg) {
   }
 
   print_str += "\n";
-  RCLCPP_INFO(get_logger(), "%s", print_str.c_str());
+  RCLCPP_DEBUG(get_logger(), "[TSCRIPT] New words (raw): \n%s", print_str.c_str());
 }
 
 
@@ -419,7 +413,7 @@ void TranscriptManager::print_new_words_(const std::vector<Segment> &new_words) 
   for (const auto& seg : new_words) {
     print_str += seg.as_str() + "\n";
   }
-  RCLCPP_INFO(get_logger(), "%s", print_str.c_str());
+  RCLCPP_DEBUG(get_logger(), "[TSCRIPT] New words (processed): \n%s", print_str.c_str());
 }
 } // end of namespace whisper
 

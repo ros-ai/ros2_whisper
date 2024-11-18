@@ -39,7 +39,7 @@ void Inference::timer_callback()
   if ( active_ ) {
     auto msg = create_message_();
     auto success = run_inference_(msg);
-    if (success) {
+    if ( success ) {
       publisher_->publish(msg);
 
       auto& clk = *get_clock();
@@ -72,10 +72,10 @@ void Inference::initialize_whisper_() {
   std::string model_name = get_parameter("model_name").as_string();
   RCLCPP_INFO(get_logger(), "Checking whether model %s is available...",
               model_name.c_str());
-  if (!model_manager_->is_available(model_name)) {
+  if ( !model_manager_->is_available(model_name) ) {
     RCLCPP_INFO(get_logger(), "Model %s is not available. Attempting download...",
                 model_name.c_str());
-    if (model_manager_->make_available(model_name) != 0) {
+    if ( model_manager_->make_available(model_name) != 0 ) {
       std::string err_msg = "Failed to download model " + model_name + ".";
       RCLCPP_ERROR(get_logger(), err_msg.c_str());
       throw std::runtime_error(err_msg);
@@ -132,7 +132,7 @@ void Inference::on_audio_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
 void Inference::inference_(const std::vector<float> &audio, 
                                   whisper_idl::msg::WhisperTokens &result) {
   auto inference_start_time = now();
-  whisper_->forward_tokenize(audio, 
+  whisper_->forward_serialize(audio, 
                       result.token_ids, result.token_texts, result.token_probs,
                       result.segment_start_token_idxs, result.start_times, result.end_times);
   result.inference_duration =
@@ -156,7 +156,7 @@ bool Inference::run_inference_(whisper_idl::msg::WhisperTokens &result) {
   // Print warning if inference takes too long for audio size
   auto duration = std::chrono::milliseconds(result.inference_duration);
   auto max_runtime_for_audio_size = whisper::count_to_time(data.size());
-  if (duration > max_runtime_for_audio_size){
+  if ( duration > max_runtime_for_audio_size ){
         auto timeout_duration_ms = max_runtime_for_audio_size.count();
         RCLCPP_WARN(get_logger(),
               "Inference took longer than audio buffer size. This leads to un-inferenced audio "
@@ -169,43 +169,41 @@ bool Inference::run_inference_(whisper_idl::msg::WhisperTokens &result) {
 }
 
 void Inference::on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
-  if (audio_ring_->almost_full()) {
-    auto audio_buff_start = audio_ring_->get_start_timestamp();
-    auto audio_buff_len_ms = count_to_time(audio_ring_->size());
-    auto cur_time = ros_time_to_chrono(get_clock()->now());
-    auto msg_duration_ms = count_to_time(msg->data.size());
-    size_t elapsed_count;
-    bool negative;
-    if ((audio_buff_start + audio_buff_len_ms) > (cur_time - msg_duration_ms)) {
-      negative = true;
-      elapsed_count = 
-        time_to_count(
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-            (audio_buff_start + audio_buff_len_ms) - (cur_time - msg_duration_ms)));
-    } else {
-      negative = false;
-      elapsed_count = 
-        time_to_count(
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-            (cur_time - msg_duration_ms) - (audio_buff_start + audio_buff_len_ms)));
-    }
-    auto [audio_buff_start_s, audio_buff_start_ns] 
-                    = chrono_time_to_ros(audio_buff_start);
-    auto [audio_buff_end_s, audio_buff_end_ns] 
-                    = chrono_time_to_ros(audio_buff_start + audio_buff_len_ms);
-    auto [cur_s, cur_ns] = chrono_time_to_ros(cur_time);
-
-    auto& clk = *get_clock();
-    RCLCPP_WARN_THROTTLE(get_logger(), clk, 1000,
-                "Audio Start:  %ld.%ld,  Audio End:  %ld.%ld,  Current time:  %ld.%ld\n"
-                "Audio buffer length:  %ldms,    Message length:  %ldms\n"
-                "Elapsed pad length:   %s%ld",
-                audio_buff_start_s, audio_buff_start_ns,
-                audio_buff_end_s, audio_buff_end_ns,
-                cur_s, cur_ns,
-                audio_buff_len_ms.count(), msg_duration_ms.count(),
-                negative ? "-": "", elapsed_count);
+  auto audio_buff_start = audio_ring_->get_start_timestamp();
+  auto audio_buff_len_ms = count_to_time(audio_ring_->size());
+  auto cur_time = ros_time_to_chrono(get_clock()->now());
+  auto msg_duration_ms = count_to_time(msg->data.size());
+  size_t elapsed_count;
+  bool negative;
+  if ( (audio_buff_start + audio_buff_len_ms) > (cur_time - msg_duration_ms) ) {
+    negative = true;
+    elapsed_count = 
+      time_to_count(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          (audio_buff_start + audio_buff_len_ms) - (cur_time - msg_duration_ms)));
+  } else {
+    negative = false;
+    elapsed_count = 
+      time_to_count(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          (cur_time - msg_duration_ms) - (audio_buff_start + audio_buff_len_ms)));
   }
+  auto [audio_buff_start_s, audio_buff_start_ns] 
+                  = chrono_time_to_ros(audio_buff_start);
+  auto [audio_buff_end_s, audio_buff_end_ns] 
+                  = chrono_time_to_ros(audio_buff_start + audio_buff_len_ms);
+  auto [cur_s, cur_ns] = chrono_time_to_ros(cur_time);
+
+  auto& clk = *get_clock();
+  RCLCPP_DEBUG_THROTTLE(get_logger(), clk, 1000,
+              "Audio Start:  %ld.%ld,  Audio End:  %ld.%ld,  Current time:  %ld.%ld\n"
+              "Audio buffer length:  %ldms,    Message length:  %ldms\n"
+              "Elapsed pad length:   %s%ld",
+              audio_buff_start_s, audio_buff_start_ns,
+              audio_buff_end_s, audio_buff_end_ns,
+              cur_s, cur_ns,
+              audio_buff_len_ms.count(), msg_duration_ms.count(),
+              negative ? "-": "", elapsed_count);
 }
 
 } // end of namespace whisper

@@ -3,15 +3,6 @@
 namespace whisper {
 
 void Transcript::push_back(const std::vector<Segment> &other) {
-  // size_t prev_seg_count = seg_counts_.size() > 0 ? seg_counts_[seg_counts_.size()-1] : 0;
-  // for (auto new_seg : other) {
-  //   seg_counts_.push_back(prev_seg_count);
-  //   prev_seg_count += new_seg.words_.size();
-  //   word_so_far += new_seg.words_.size();
-  // }
-
-  // segments_.insert(segments_.end(), other.begin(), other.end());
-
   Transcript::Operations pending_ops;
   int last_seg = static_cast<int>(segments_.size()) - 1;
   int last_word = last_seg >= 0 ? segments_[last_seg].words_.size() : 0;
@@ -33,7 +24,7 @@ void Transcript::clear_mistakes(const int occurrence_threshold) {
     if ( segments_[seg_i].occ <= occurrence_threshold ) {
       pending_ops.push_back({DEL_SEG, {seg_i, 0}});
     }
-
+    // Remove low liklihood words from the transcript
     for (size_t word_i = 0; word_i < segments_[seg_i].words_.size(); ++word_i) {
       const auto& word = segments_[seg_i].words_[word_i];
       if ( word.get_occurrences() <= occurrence_threshold ) {
@@ -51,7 +42,7 @@ void Transcript::set_stale_segment(std::chrono::system_clock::time_point time_th
     if ( !(segments_[seg_i].get_start() < time_thresh) ) {
       // Stale id will be last segment
       break;
-    } 
+    }
     new_stale_segment_ = seg_i;
   }
   stale_segment_ = new_stale_segment_;

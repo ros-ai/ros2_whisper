@@ -21,7 +21,7 @@ int ModelManager::make_available(const std::string &model_name) {
 }
 
 std::string ModelManager::get_model_path(const std::string &model_name) {
-  if (!is_available(model_name)) {
+  if ( !is_available(model_name) ) {
     throw std::runtime_error("Model not available: " + model_name);
   }
   return (cache_path_ / std::filesystem::path(model_name_to_file_name_(model_name))).string();
@@ -29,7 +29,7 @@ std::string ModelManager::get_model_path(const std::string &model_name) {
 
 void ModelManager::mkdir(const std::string &path) {
   using namespace std;
-  if (filesystem::exists(path)) {
+  if ( filesystem::exists(path) ) {
     cout << "Path already exists: " << path << endl;
     return;
   }

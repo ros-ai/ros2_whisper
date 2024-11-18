@@ -2,21 +2,26 @@
 #define WHISPER_UTILS__CHRONO_UTILS_HPP_
 
 #include <chrono>
-#include <ctime>    // std::put_time
-#include <iomanip>  // std::setfill and std::setw
-#include <sstream> // std::stringstream
-#include "rclcpp/rclcpp.hpp" // rclcpp::Time
-#include <builtin_interfaces/msg/time.hpp> // builtin_interfaces::msg::Time
+#include <ctime>                               // std::put_time
+#include <iomanip>                             // std::setfill and std::setw
+#include <sstream>                             // std::stringstream
+#include "rclcpp/rclcpp.hpp"                   // rclcpp::Time
+#include <builtin_interfaces/msg/time.hpp>     // builtin_interfaces::msg::Time
 
 namespace whisper {
 
-// Get the nanoseconds from the current ROS clock and convert it to a chrono timestamp
+
+/**
+ * @brief Get the nanoseconds from the current ROS clock and convert it to a chrono timestamp
+ */
 inline std::chrono::system_clock::time_point ros_time_to_chrono(const rclcpp::Time &now) {
   std::chrono::nanoseconds nanoseconds(now.nanoseconds());
   return std::chrono::system_clock::time_point(nanoseconds);
 };
 
-// Helper function 
+/**
+ * @brief Convert the timestamp to second and nanoseconds (for use in ROS)
+ */
 inline std::pair<int64_t, uint64_t> chrono_time_to_ros(
                 const std::chrono::system_clock::time_point &timestamp) {
   std::chrono::system_clock::duration duration_since_epoch = timestamp.time_since_epoch();
@@ -27,7 +32,9 @@ inline std::pair<int64_t, uint64_t> chrono_time_to_ros(
   return {sec.count(), nano.count()};
 };
 
-// Convert ROS timestamp (seconds and nanoseconds) to a std::chrono::duration
+/**
+ * @brief Convert ROS timestamp (seconds and nanoseconds) to a std::chrono::duration
+ */
 inline std::chrono::system_clock::time_point ros_msg_to_chrono(
                       const builtin_interfaces::msg::Time& ros_time) {
   std::chrono::seconds sec(ros_time.sec);
@@ -38,7 +45,9 @@ inline std::chrono::system_clock::time_point ros_msg_to_chrono(
   return time_point;
 };
 
-// Convert std::chrono::system_clock::time_point to a ROS timestamp (seconds and nanoseconds)
+/**
+ * @brief Convert std::chrono::system_clock::time_point to a ROS timestamp (seconds and nanoseconds)
+ */
 inline builtin_interfaces::msg::Time chrono_to_ros_msg(
                       const std::chrono::system_clock::time_point& timestamp) {
   auto [sec, nsec] = chrono_time_to_ros(timestamp);
@@ -48,7 +57,9 @@ inline builtin_interfaces::msg::Time chrono_to_ros_msg(
   return ros_time;
 };
 
-// Convert the timestamp to a human-readable string:  "YY-MM-DD HH:MM:SS.mmm"
+/**
+ * @brief Convert the timestamp to a human-readable string:  "YY-MM-DD HH:MM:SS.mmm"
+ */
 inline std::string timestamp_as_str(const std::chrono::system_clock::time_point& timestamp) {
   std::stringstream ss;
   // Convert to time_t for easier formating

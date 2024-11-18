@@ -55,7 +55,6 @@ protected:
   rclcpp::Time inference_start_time_;
 
   // Callback to merge incoming queue into transcript
-  void clear_queue_callback_();
   bool clear_queue_();
   rclcpp::TimerBase::SharedPtr clear_queue_timer_;
 

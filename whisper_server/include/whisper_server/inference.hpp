@@ -24,9 +24,6 @@
 namespace whisper {
 
 class Inference : public rclcpp::Node {
-  // using Inference = whisper_idl::action::Inference;
-  // using GoalHandleInference = rclcpp_action::ServerGoalHandle<Inference>;
-
 public:
   Inference(const rclcpp::NodeOptions& options);
 

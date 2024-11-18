@@ -2,7 +2,7 @@
 
 namespace whisper {
 
-void Transcript::merge_one_(const std::vector<Segment> &other) {
+void Transcript::merge_one(const std::vector<Segment> &other) {
   if ( !other.empty() ) {
     // Set the stale segment based on incoming timestamp
     set_stale_segment(other[0].get_start());
@@ -174,9 +174,6 @@ void Transcript::merge_one_(const std::vector<Segment> &other) {
 
   run(pending_ops, other);
   clear_mistakes(-1);
-  // auto stale_id_new = std::max(stale_id, stale_id + indiciesA[0] - indiciesB[0]);
-  // RCLCPP_DEBUG(node_ptr_->get_logger(), "Stale id update %d -> %d", stale_id, stale_id_new );
-  // set_stale_word_id(stale_id_new);
 }
 
 
@@ -197,45 +194,35 @@ std::tuple<std::vector<int>, std::vector<int>> Transcript::lcs_indicies_(
 
   // Fill DP table
   for (int i = 1; i <= nA; ++i) {
-    // RCLCPP_INFO(node_ptr_->get_logger(), "Word i: %s", textA[i-1].c_str());
     for (int j = 1; j <= nB; ++j) {
-      // RCLCPP_INFO(node_ptr_->get_logger(), "\tWord j: %s", textB[j-1].c_str());
       if (textA[i-1] == textB[j-1]) {
-        // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tMatch");
         dp[i][j] = {dp[i-1][j-1].length + 1, 0};
         prev[i][j] = {i-1, j-1};
       } else {
         // Case 1: skip one element from textA
         if (dp[i-1][j].gaps < allowedGaps && dp[i][j].length < dp[i-1][j].length) {  
-          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from A");
           dp[i][j] = {dp[i-1][j].length, dp[i-1][j].gaps + 1};
           prev[i][j] = prev[i-1][j];
         }
 
         // Case 2: skip one element from textB
         if (dp[i][j-1].gaps < allowedGaps && dp[i][j].length < dp[i][j-1].length) {
-          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from B");
           dp[i][j] = {dp[i][j-1].length, dp[i][j-1].gaps + 1};
           prev[i][j] = prev[i][j-1];
         }
 
         // Case 3: skip one element from textA AND textB
         if (dp[i-1][j-1].gaps < allowedGaps && dp[i][j].length < dp[i-1][j-1].length) {
-          // RCLCPP_INFO(node_ptr_->get_logger(), "\t\t Drop word from A AND B");
           dp[i][j] = {dp[i-1][j-1].length, dp[i-1][j-1].gaps + 1};
           prev[i][j] = prev[i-1][j-1];
         }
       }
-      // RCLCPP_INFO(node_ptr_->get_logger(), "\t\tDP[%d][%d] Length: %d  Gap: %d", 
-      //             i, j, dp[i][j].length, dp[i][j].gaps);
 
       // Track the maximum length
       if (dp[i][j].length >= maxLength) {
         maxLength = dp[i][j].length;
         endIndexA = i;
         endIndexB = j;
-        // RCLCPP_INFO(node_ptr_->get_logger(), " ---- New Best Length: %d  endpoint A: %d   endpoint B: %d", 
-        //             maxLength, endIndexA, endIndexB);
       }
     }
   }
@@ -245,16 +232,13 @@ std::tuple<std::vector<int>, std::vector<int>> Transcript::lcs_indicies_(
   }
   
   // Backtrack to find the longest matching subsequence
-  std::string print_str = "Backtrack pairs: ";
   std::vector<int> resultA, resultB;
   std::tie(endIndexA, endIndexB) = prev[endIndexA][endIndexB];
   while (endIndexA != -1 && endIndexB != -1) {
-    print_str += "(" + std::to_string(endIndexA) + "," + std::to_string(endIndexB) + "), ";
     resultA.push_back(endIndexA);  
     resultB.push_back(endIndexB);
     std::tie(endIndexA, endIndexB) = prev[endIndexA][endIndexB];
   }
-  // RCLCPP_INFO(node_ptr_->get_logger(), "%s", print_str.c_str());
 
   std::reverse(resultA.begin(), resultA.end());
   std::reverse(resultB.begin(), resultB.end());
