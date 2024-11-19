@@ -70,30 +70,6 @@ This example shows live transcription of first minute of the 6'th chapter in ***
 
 ![harry_potter_sample](./doc/harry_potter_sample.gif)
 
-To run this example, first download the (~4MB) file using [Git Large File Storage (LFS)](https://git-lfs.com/):
-
-```shell
-git lfs pull
-```
-
-Then launch the bringup with the audio listener component disabled:
-
-```shell
-ros2 launch whisper_bringup replay.launch.py
-```
-
-Start the stream demo:
-
-```shell
-ros2 run whisper_demos stream
-```
-
-And play the sample:
-
-```shell
-ros2 bag play src/ros2_whisper/samples/HarryPotter_Book1_Chapter6/
-```
-
 ## Troubleshoot
 
 - Encoder inference time: https://github.com/ggerganov/whisper.cpp/issues/10#issuecomment-1302462960
