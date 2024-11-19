@@ -13,6 +13,5 @@ whisper:
         use_gpu: true
 
       # buffer
-      buffer_capacity: 10 # seconds
-      update_ms: 800 # milliseconds
+      buffer_capacity: 20 # seconds
       callback_ms: 1000 # milliseconds
