@@ -86,7 +86,6 @@ public:
 
   // Utilities:
   inline bool empty() const { return segments_.empty(); }
-  inline size_t get_stale_seg_id() const { return stale_segment_; }
   inline void clear() { segments_.clear(); stale_segment_ = 0; };
   inline size_t get_stale_segment() const { return stale_segment_; };
   inline size_t size() const { return segments_.size(); };

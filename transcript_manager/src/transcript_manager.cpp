@@ -150,7 +150,7 @@ bool TranscriptManager::clear_queue_() {
 void TranscriptManager::serialize_transcript_(AudioTranscript &msg) {
   size_t stale_counter = 0;
   size_t segment_count = 0;
-  size_t stale_segment_id = transcript_->get_stale_seg_id();
+  size_t stale_segment_id = transcript_->get_stale_segment();
   for (auto it = transcript_->segments_begin(); it != transcript_->segments_end(); ++it) {
     auto segment = *it;
     msg.seg_start_words_id.push_back(msg.words.size());
