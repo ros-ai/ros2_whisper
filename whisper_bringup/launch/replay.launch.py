@@ -21,13 +21,13 @@ def generate_launch_description() -> LaunchDescription:
     ld = LaunchDescription()
 
     # launch audio listener
-    ld.add_action(
-        Node(
-            package="audio_listener",
-            executable="audio_listener",
-            output="screen",
-        )
-    )
+    # ld.add_action(
+    #     Node(
+    #         package="audio_listener",
+    #         executable="audio_listener",
+    #         output="screen",
+    #     )
+    # )
 
     # launch whisper
     whisper_config = os.path.join(
