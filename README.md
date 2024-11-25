@@ -1,6 +1,12 @@
 # ROS 2 Whisper
 ROS 2 inference for [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
+## Example
+
+This example shows live transcription of first minute of the 6'th chapter in ***Harry Potter and the Philosopher's Stone*** from Audible:
+
+![harry_potter_sample](./doc/harry_potter_sample.gif)
+
 ## Build
 - Install `pyaudio`, see [install instructions](https://pypi.org/project/PyAudio/).
 - Build this repository, do
@@ -63,12 +69,6 @@ Action server under topic `inference` of type [Inference.action](whisper_idl/act
 Topics of type [AudioTranscript.msg](whisper_idl/msg/AudioTranscript.msg) on `/whisper/transcript_stream`, which contain the entire transcript (stale and active), are published on updates to the transcript.  
 
 Internally, the topic `/whisper/tokens` of type [WhisperTokens.msg](whisper_idl/msg/WhisperTokens.msg) is used to transfer the model output between nodes.
-
-## Example
-
-This example shows live transcription of first minute of the 6'th chapter in ***Harry Potter and the Philosopher's Stone*** from Audible:
-
-![harry_potter_sample](./doc/harry_potter_sample.gif)
 
 ## Troubleshoot
 
