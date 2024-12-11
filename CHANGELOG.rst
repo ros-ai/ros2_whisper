@@ -2,38 +2,33 @@
 Changelog for package ROS 2 Whisper
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-## 1.4.0 (2024-12-11)
+1.4.0 (2024-12-11)
+------------------
 
-- `whisper_cpp_vendor`: `whisper.cpp` 1.6.2 to 1.7.2 release, build changes
+* `whisper_cpp_vendor`: `whisper.cpp` 1.6.2 to 1.7.2 release, build changes
+* Added live audio transcription streaming
+* `whisper_server` changes:
+   * Holding incoming Audio data in a Ring Buffer (removed BatchBuffer, drop oldest audio).
+   * Transcribing the entire buffer of audio data with whisper.cpp on a timer interrupt
+   * Publishing the resulting tokens + probabilities on topic `/whisper/tokens`
+   * Removing the Action Server
+   * New Node Parameters:
+       * `active` -- Boolean to control if whisper.cpp should be run or not.
+       * `callback_ms` -- Integer controlling how often whisper.cpp is called.
+       * `buffer_capacity` -- Integer number of seconds previous where audio is transcribed.
+* `transcript_manager` package added to:
+   * Store record of what was previously transcribed.
+   * Track what is currently being transcribed. Align and update the text from subscribed topic `/whisper/tokens`.
+       * Updates done on timer interrupt
+   * Host the Action Server which was previously part of `whisper_server`
+   * Publish the entire transcript (previous and current) under `/whisper/transcript_stream`
+       * Published transcript contains text and estimated segment markings, segment timestamps
+* `whisper_demos`: Add `stream` node
+* `whisper_idl`:
+   * Added `msg/WhisperTokens.msg`, `msg/AudioTranscript.msg`
+   * Added `launch/replay.launch.py` which does not bring up `audio_listener`
+* `whisper_util`: Changes to directly inference and then serialize whisper.cpp model output, also containing probability data.
 
-- Added live audio transcription streaming
-
-- `whisper_server`:  changes:
-  - Holding incoming Audio data in a Ring Buffer (removed BatchBuffer, drop oldest audio).
-  - Transcribing the entire buffer of audio data with whisper.cpp on a timer interrupt
-  - Publishing the resulting tokens + probabilities on topic  `/whisper/tokens` 
-  - Removing the Action Server
-  - New Node Parameters:
-    - `active` -- Boolean to control if whisper.cpp should be run or not.
-    - `callback_ms` -- Integer controlling how often whisper.cpp is called. 
-    - `buffer_capacity` -- Integer number of seconds previous where audio is transcribed.
-  
-- `transcript_manager`:  Package added to:
-
-  - Store record of what was previously transcribed.
-  - Track what is currently being transcribed.  Align and update the text from subscribed topic `/whisper/tokens`.
-    - Updates done on timer interrupt
-  - Host the Action Server which was previously part of `whisper_server`
-  - Publish the entire transcript (previous and current) under `/whisper/transcript_stream` 
-    - Published transcript contains text and estimated segment markings, segment timestamps
-
-- `whisper_demos`:   Add `stream` node
-
-- `whisper_idl`:  Added `msg/WhisperTokens.msg`,  `msg/AudioTranscript.msg` 
-
-- `whisper_idl`:  Added  `launch/replay.launch.py` which does not bring up `audio_listener`
-
-- `whisper_util`:  Changes to directly inference and then serialize whisper.cpp model output, also containing probability data.
 
 1.3.1 (2024-07-01)
 ------------------
