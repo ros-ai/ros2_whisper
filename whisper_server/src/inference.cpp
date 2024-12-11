@@ -148,24 +148,30 @@ whisper_idl::msg::WhisperTokens Inference::create_message_() {
 }
 
 bool Inference::run_inference_(whisper_idl::msg::WhisperTokens &result) {
-  const auto& [data, timestamp] = audio_ring_->peak();
-  result.stamp = chrono_to_ros_msg(timestamp);
+  if ( whisper_mutex_.try_lock() ) {
+    const auto& [data, timestamp] = audio_ring_->peak();
+    result.stamp = chrono_to_ros_msg(timestamp);
 
-  inference_(data, result);
+    inference_(data, result);
 
-  // Print warning if inference takes too long for audio size
-  auto duration = std::chrono::milliseconds(result.inference_duration);
-  auto max_runtime_for_audio_size = whisper::count_to_time(data.size());
-  if ( duration > max_runtime_for_audio_size ){
-        auto timeout_duration_ms = max_runtime_for_audio_size.count();
-        RCLCPP_WARN(get_logger(),
-              "Inference took longer than audio buffer size. This leads to un-inferenced audio "
-              "data. Consider increasing thread number or compile with accelerator support. \n "
-              "\t Inference Duration:   %lld,  Timeout after  %lld", 
-              static_cast<long long>(duration.count()), 
-              static_cast<long long>(timeout_duration_ms));
+    // Print warning if inference takes too long for audio size
+    auto duration = std::chrono::milliseconds(result.inference_duration);
+    auto max_runtime_for_audio_size = whisper::count_to_time(data.size());
+    if ( duration > max_runtime_for_audio_size ){
+          auto timeout_duration_ms = max_runtime_for_audio_size.count();
+          RCLCPP_WARN(get_logger(),
+                "Inference took longer than audio buffer size. This leads to un-inferenced audio "
+                "data. Consider increasing thread number or compile with accelerator support. \n "
+                "\t Inference Duration:   %lld,  Timeout after  %lld", 
+                static_cast<long long>(duration.count()), 
+                static_cast<long long>(timeout_duration_ms));
+    }
+    whisper_mutex_.unlock();
+    return true;
+  } else {
+    RCLCPP_INFO(get_logger(), "Whisper.cpp busy, skipping inference");
+    return false;
   }
-  return true;
 }
 
 void Inference::on_audio_debug_print_(const std_msgs::msg::Int16MultiArray::SharedPtr msg) {
