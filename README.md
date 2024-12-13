@@ -13,7 +13,7 @@ This example shows live transcription of first minute of the 6'th chapter in ***
 ```shell
 mkdir -p ros-ai/src && cd ros-ai/src && \
 git clone https://github.com/ros-ai/ros2_whisper.git && cd .. && \
-colcon build --symlink-install --cmake-args -DWHISPER_CUDA=On --no-warn-unused-cli
+colcon build --symlink-install --cmake-args -DGGML_CUDA=On --no-warn-unused-cli
 ```
 
 ## Demos

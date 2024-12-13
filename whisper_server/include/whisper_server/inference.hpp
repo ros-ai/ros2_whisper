@@ -6,7 +6,7 @@
 #include <numeric>
 #include <stdexcept>
 #include <string>
-// #include <mutex>
+#include <mutex>
 
 #include "rcl_interfaces/msg/set_parameters_result.hpp"
 #include "rclcpp/rclcpp.hpp"

@@ -2,10 +2,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>transcript_manager</name>
-  <version>0.0.1</version>
+  <version>1.4.0</version>
   <description>Fuse overlapping whisper inference results into a single transcirpt.</description>
-  <maintainer email="nathanbcorral@gmail.com">nathan</maintainer>
-  <license>Apache-2.0</license>
+  <maintainer email="nathan.b.corral@gmail.com">nathan</maintainer>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
